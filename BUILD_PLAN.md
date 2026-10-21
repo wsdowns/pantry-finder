@@ -35,9 +35,11 @@ Waiting on teammate for: Twilio account/number, registration type and approval s
 - [x] Unit tests for schedule logic (nth weekday, month boundaries, DST, closures, signature): `python3 -m unittest`
 
 ## Phase 4: Voice line (optional, can run in parallel with Phase 2)
-- [ ] Second webhook returning Twilio voice instructions: enter ZIP by keypad, read top 2 pantries aloud
-- [ ] Offer to text the details to the caller
-- [ ] Same signature check
+- [x] `/voice` webhook: menu, ZIP by keypad, reads top 2 pantries aloud, home-delivery option
+- [x] Call forwarding to a pantry, only while open and only if `forward` is set in `pantries.json` (none set yet)
+- [ ] Offer to text the details to the caller (needs Twilio REST credentials)
+- [x] Same signature check (use `PUBLIC_BASE_URL`)
+- [ ] Get each pantry's OK and a confirmed number before enabling `forward`
 - Can go live before SMS registration clears
 
 ## Phase 5: Operate

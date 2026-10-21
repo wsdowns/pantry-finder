@@ -40,6 +40,18 @@ python3 pantry.py --serve
 ```
 When `TWILIO_AUTH_TOKEN` is unset, checking is off (fine for local testing). If you sit behind a proxy that changes the URL, `PUBLIC_URL` must still be the URL Twilio was configured with.
 
+## Voice line and call forwarding
+`POST /voice` is the phone line: menu (1 = pantry near you, 2 = home delivery), the caller keys a ZIP, hears the two best pantries, and can be connected to one.
+- **Forwarding is off for every pantry** until you add `"forward": "+1478XXXXXXX"` to it in `pantries.json`. Only add it after the pantry agrees and the number is phone-confirmed. Calls are only forwarded while that pantry is open; otherwise the caller hears when it opens.
+- Point the number's "A call comes in" webhook at `POST https://<public-host>/voice`.
+- Twilio signs the full URL including `?step=...`, so for signature checking set `PUBLIC_BASE_URL=https://<public-host>` (scheme + host, no trailing slash). `PUBLIC_URL` still works for `/sms` alone.
+
+## Twilio account notes (as of 2026-10-21)
+- Number seen in the console: toll-free +1 (888) 702-4919, SMS/MMS/Voice enabled.
+- **That number's incoming-message webhook currently points at ChurchTrakr** (`app.churchtrakr.com/_api/platform/crm/sms-inbound`). Repointing it would stop texts reaching ChurchTrakr. Use a separate number for this project, or confirm with the account owner before changing it.
+- Toll-free numbers need toll-free verification before the public can text them reliably.
+- Not published anywhere yet; `site/config.js` is intentionally still empty.
+
 ## Data caveats
 - Hours come from pantry sites, Lemontree, and findhelp (reviewed Oct 2026). Call pantries to confirm before launch, and re-check periodically.
 - First Presbyterian's coordinates and the ZIP/landmark center points are approximate, so distances are rough.

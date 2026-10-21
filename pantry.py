@@ -2,9 +2,9 @@
 """Nearest open food pantry for Milledgeville, GA.
 
 CLI:      python3 pantry.py "31061"        (ZIP, landmark, or street address)
-SMS sim:  python3 pantry.py --serve        (POST /sms with Body=..., Twilio-style TwiML reply)
+Server:   python3 pantry.py --serve        (POST /sms and POST /voice, Twilio-style TwiML replies)
 """
-import base64, hashlib, hmac, json, math, os, sys, urllib.parse, urllib.request
+import base64, hashlib, hmac, json, math, os, re, sys, urllib.parse, urllib.request
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -88,6 +88,17 @@ def fmt(dt, now):
     return f"{dt.strftime('%a %b %-d')} {t}"
 
 
+def ranked(where, now):
+    """[(pantry, state, when, miles)]: open now first (nearest), then soonest to open."""
+    rows = []
+    for p in PANTRIES:
+        st, when = status(p, now)
+        rows.append((st != "open", when or datetime.max.replace(tzinfo=TZ), miles(where, (p["lat"], p["lng"])), p, st, when))
+    open_now = sorted([r for r in rows if not r[0]], key=lambda r: r[2])
+    later = sorted([r for r in rows if r[0]], key=lambda r: (r[1], r[2]))
+    return [(p, st, when, d) for _, _, d, p, st, when in open_now + later]
+
+
 def delivery_answer():
     blocks = []
     for d in DELIVERY:
@@ -106,15 +117,8 @@ def answer(text, now=None):
     where = locate(text)
     if not where:
         return "Sorry, I couldn't find that place. Text a ZIP (31061), a landmark (GCSU), or a street address."
-    rows = []
-    for p in PANTRIES:
-        st, when = status(p, now)
-        rows.append((st != "open", when or datetime.max.replace(tzinfo=TZ), miles(where, (p["lat"], p["lng"])), p, st, when))
-    # Open now first (nearest), then soonest to open.
-    open_now = sorted([r for r in rows if not r[0]], key=lambda r: r[2])
-    later = sorted([r for r in rows if r[0]], key=lambda r: (r[1], r[2]))
     lines = []
-    for i, (_, _, d, p, st, when) in enumerate((open_now + later)[:3]):
+    for i, (p, st, when, d) in enumerate(ranked(where, now)[:3]):
         head = f"OPEN NOW until {fmt(when, now)}" if st == "open" else f"Closed, opens {fmt(when, now)}"
         note = f" ({p['note']})" if p.get("note") else ""
         line = f"{p['name']} - {head}\n{p['address']} - {d:.1f} mi\n{p['phone']}{note}"
@@ -133,21 +137,109 @@ def valid_twilio_signature(url, params, signature):
     return hmac.compare_digest(expected, signature)
 
 
+def xml_esc(s):
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def speak_phone(phone):
+    """'(478) 453-4111 ext. 2' -> '4 7 8, 4 5 3, 4 1 1 1, extension 2' so text-to-speech reads digits."""
+    main, _, ext = phone.partition("ext.")
+    d = re.sub(r"\D", "", main)
+    parts = [d[:3], d[3:6], d[6:]] if len(d) == 10 else [d]
+    spoken = ", ".join(" ".join(x) for x in parts)
+    ext_digits = re.sub(r"\D", "", ext)
+    return spoken + (", extension " + " ".join(ext_digits) if ext_digits else "")
+
+
+def _say(text):
+    return f"<Say>{xml_esc(text)}</Say>"
+
+
+def _gather(prompt, action, digits):
+    return f'<Gather input="dtmf" numDigits="{digits}" timeout="8" action="{xml_esc(action)}">{_say(prompt)}</Gather>'
+
+
+def _twiml(*parts):
+    return '<?xml version="1.0" encoding="UTF-8"?><Response>' + "".join(parts) + "</Response>"
+
+
+def _connectable(p, now):
+    """Only forward calls to a pantry that is open right now and has a confirmed forwarding number."""
+    return bool(p.get("forward")) and status(p, now)[0] == "open"
+
+
+def voice(step="", digits="", zip_code="", n="", dial_status="", now=None):
+    """TwiML for the phone line. step: '' menu, 'menu', 'zip', 'pick', 'after'."""
+    now = now or datetime.now(TZ)
+    goodbye = _say("We did not get that. Goodbye.")
+    menu = _twiml(_say("Welcome to Milledgeville food help."),
+                  _gather("Press 1 to find a food pantry near you. Press 2 for home delivery.", "/voice?step=menu", 1), goodbye)
+    if step == "":
+        return menu
+    if step == "menu":
+        if digits == "1":
+            return _twiml(_gather("Enter your 5 digit ZIP code.", "/voice?step=zip", 5), goodbye)
+        if digits == "2":
+            items = [f"{d['name']}. {speak_phone(d['phone'])}. {d['who']}" for d in DELIVERY if d.get("phone")]
+            return _twiml(_say("Home delivery is mostly for seniors or people who cannot leave home. Please call to confirm who qualifies."),
+                          *[_say(i) for i in items], _say("Goodbye."))
+        return menu
+    if step == "zip":
+        where = PLACES.get(digits)
+        if not where:
+            return _twiml(_say("Sorry, I only know Milledgeville ZIP codes, such as 3 1 0 6 1."),
+                          _gather("Enter your 5 digit ZIP code.", "/voice?step=zip", 5), goodbye)
+        top = ranked(where, now)[:2]
+        spoken = []
+        for p, st, when, d in top:
+            when_txt = f"It is open now, until {fmt(when, now)}." if st == "open" else f"It is closed. It opens {fmt(when, now)}."
+            spoken.append(f"{p['name']}, {d:.1f} miles away, at {p['address']}. {when_txt} Phone: {speak_phone(p['phone'])}.")
+        connect = next((p for p, *_ in top if _connectable(p, now)), None)
+        opts = "Press 2 to hear this again. Press 9 to start over."
+        if connect:
+            opts = f"Press 1 to be connected to {connect['name']} now. " + opts
+        idx = PANTRIES.index(connect) if connect else ""
+        action = f"/voice?step=pick&zip={digits}&n={idx}"
+        return _twiml(*[_say(s) for s in spoken], _gather(opts, action, 1), _say("Goodbye."))
+    if step == "pick":
+        if digits == "1" and n.isdigit() and int(n) < len(PANTRIES) and _connectable(PANTRIES[int(n)], now):
+            p = PANTRIES[int(n)]
+            return _twiml(_say(f"Connecting you to {p['name']}. They are volunteers, so please be patient."),
+                          f'<Dial timeout="25" action="/voice?step=after">{xml_esc(p["forward"])}</Dial>')
+        if digits == "1":
+            return _twiml(_say("Sorry, that pantry has just closed. Please call back during their hours. Goodbye."))
+        if digits == "2":
+            return voice("zip", digits=zip_code, now=now)
+        return menu
+    if step == "after":
+        if dial_status == "completed":
+            return _twiml("<Hangup/>")
+        return _twiml(_say("Sorry, no one answered. Please try again during pantry hours. Goodbye."))
+    return menu
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         body = self.rfile.read(int(self.headers.get("Content-Length", 0))).decode()
-        # Signature check is on whenever TWILIO_AUTH_TOKEN is set; PUBLIC_URL must be the exact URL Twilio calls.
+        form = {k: v[0] for k, v in urllib.parse.parse_qs(body, keep_blank_values=True).items()}
+        url = urllib.parse.urlparse(self.path)
+        query = {k: v[0] for k, v in urllib.parse.parse_qs(url.query).items()}
+        # Signature check is on whenever TWILIO_AUTH_TOKEN is set. Twilio signs the full public URL, so set
+        # PUBLIC_BASE_URL (scheme + host, no trailing slash); PUBLIC_URL still works for /sms alone.
         if os.environ.get("TWILIO_AUTH_TOKEN"):
-            params = {k: v[0] for k, v in urllib.parse.parse_qs(body, keep_blank_values=True).items()}
-            sig = self.headers.get("X-Twilio-Signature", "")
-            if not valid_twilio_signature(os.environ.get("PUBLIC_URL", ""), params, sig):
+            base = os.environ.get("PUBLIC_BASE_URL")
+            full = base + self.path if base else os.environ.get("PUBLIC_URL", "")
+            if not valid_twilio_signature(full, form, self.headers.get("X-Twilio-Signature", "")):
                 self.send_response(403)
                 self.end_headers()
                 return
-        text = urllib.parse.parse_qs(body).get("Body", [""])[0]
-        reply = answer(text) if text.strip() else "Text a ZIP code or address to find the nearest open food pantry."
-        esc = reply.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        out = f'<?xml version="1.0" encoding="UTF-8"?><Response><Message>{esc}</Message></Response>'.encode()
+        if url.path == "/voice":
+            out = voice(query.get("step", ""), form.get("Digits", ""), query.get("zip", ""), query.get("n", ""),
+                        form.get("DialCallStatus", "")).encode()
+        else:
+            text = form.get("Body", "")
+            reply = answer(text) if text.strip() else "Text a ZIP code or address to find the nearest open food pantry."
+            out = f'<?xml version="1.0" encoding="UTF-8"?><Response><Message>{xml_esc(reply)}</Message></Response>'.encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/xml")
         self.send_header("Content-Length", str(len(out)))

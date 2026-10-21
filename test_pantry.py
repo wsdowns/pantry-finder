@@ -73,6 +73,71 @@ class Delivery(unittest.TestCase):
             self.assertTrue(d.get("phone") or d.get("website"), d["name"])
 
 
+class Voice(unittest.TestCase):
+    WED_10 = at(2026, 10, 21, 10)
+    WED_13 = at(2026, 10, 21, 13)
+
+    def tearDown(self):
+        CHARD.pop("forward", None)
+
+    def test_speak_phone(self):
+        self.assertEqual(pantry.speak_phone("(478) 414-1126"), "4 7 8, 4 1 4, 1 1 2 6")
+        self.assertEqual(pantry.speak_phone("(478) 453-4111 ext. 2"), "4 7 8, 4 5 3, 4 1 1 1, extension 2")
+        self.assertEqual(pantry.speak_phone("211"), "2 1 1")
+
+    def test_menu(self):
+        out = pantry.voice("", now=self.WED_10)
+        self.assertIn("<Gather", out)
+        self.assertIn("Welcome to Milledgeville food help", out)
+
+    def test_delivery_option_reads_numbers(self):
+        out = pantry.voice("menu", digits="2")
+        self.assertIn("Baldwin County Senior Citizens Center", out)
+        self.assertIn("4 7 8, 4 5 1, 0 4 4 5", out)
+
+    def test_zip_reads_pantries_without_connect_when_no_forward_number(self):
+        out = pantry.voice("zip", digits="31062", now=self.WED_10)
+        self.assertIn("Chard Wray Food Pantry", out)
+        self.assertIn("open now", out)
+        self.assertNotIn("be connected", out)
+
+    def test_unknown_zip_asks_again(self):
+        out = pantry.voice("zip", digits="90210", now=self.WED_10)
+        self.assertIn("only know Milledgeville ZIP", out)
+        self.assertNotIn("<Dial", out)
+
+    def test_connect_offered_and_dialed_only_when_open_with_forward_number(self):
+        CHARD["forward"] = "+14785550123"
+        idx = pantry.PANTRIES.index(CHARD)
+        offer = pantry.voice("zip", digits="31062", now=self.WED_10)
+        self.assertIn("Press 1 to be connected to Chard Wray", offer)
+        self.assertIn(f"n={idx}", offer)
+        dial = pantry.voice("pick", digits="1", zip_code="31062", n=str(idx), now=self.WED_10)
+        self.assertIn("<Dial", dial)
+        self.assertIn("+14785550123", dial)
+        # Same pick after hours must not dial.
+        closed = pantry.voice("pick", digits="1", zip_code="31062", n=str(idx), now=self.WED_13)
+        self.assertNotIn("<Dial", closed)
+        self.assertIn("just closed", closed)
+        self.assertNotIn("be connected", pantry.voice("zip", digits="31062", now=self.WED_13))
+
+    def test_bad_n_does_not_crash(self):
+        self.assertNotIn("<Dial", pantry.voice("pick", digits="1", n="abc", now=self.WED_10))
+        self.assertNotIn("<Dial", pantry.voice("pick", digits="1", n="99", now=self.WED_10))
+
+    def test_after_dial(self):
+        self.assertIn("no one answered", pantry.voice("after", dial_status="no-answer"))
+        self.assertIn("<Hangup/>", pantry.voice("after", dial_status="completed"))
+
+    def test_all_steps_are_wellformed_xml(self):
+        from xml.dom import minidom
+        CHARD["forward"] = "+14785550123"
+        for kw in ({}, {"step": "menu", "digits": "1"}, {"step": "menu", "digits": "2"},
+                   {"step": "zip", "digits": "31061"}, {"step": "pick", "digits": "1", "n": "0"},
+                   {"step": "pick", "digits": "2", "zip_code": "31061"}, {"step": "after", "dial_status": "busy"}):
+            minidom.parseString(pantry.voice(now=self.WED_10, **kw))
+
+
 class Signature(unittest.TestCase):
     def test_signature(self):
         import base64, hashlib, hmac, os
