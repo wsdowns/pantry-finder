@@ -88,7 +88,7 @@ class Voice(unittest.TestCase):
     def test_menu(self):
         out = pantry.voice("", now=self.WED_10)
         self.assertIn("<Gather", out)
-        self.assertIn("Welcome to Milledgeville food help", out)
+        self.assertIn("Welcome to Milledgeville food assistance", out)
 
     def test_delivery_option_reads_numbers(self):
         out = pantry.voice("menu", digits="2")

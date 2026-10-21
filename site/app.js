@@ -11,6 +11,7 @@
   };
 
   let where = F.PLACES.downtown, label = "downtown Milledgeville";
+  let mapNarrow = window.innerWidth < 560;
   let demo = null;                     // null = live; otherwise a naive-ET ms the time machine chose
   const nowMs = () => (demo ?? F.etNow());
 
@@ -24,11 +25,12 @@
     $("hl-text").textContent = H.voiceEnabled
       ? "Text your ZIP code and we text back the nearest open pantry. Prefer to talk? Call and press your ZIP on the keypad."
       : "Text your ZIP code and we text back the nearest open pantry. No app or internet needed.";
-    btns.innerHTML = `<a class="btn" href="sms:${esc(H.tel)}?body=31061">💬 Text us</a>` +
-      (H.voiceEnabled ? `<a class="btn ghost" href="tel:${esc(H.tel)}">📞 Call</a>` : "");
+    btns.innerHTML = `<a class="btn" href="sms:${esc(H.tel)}?body=31061"><span aria-hidden="true">💬</span> Text us</a>` +
+      (H.voiceEnabled ? `<a class="btn ghost" href="tel:${esc(H.tel)}"><span aria-hidden="true">📞</span> Call</a>` : "");
     const bc = $("barcall");
     bc.classList.remove("soon"); bc.href = H.voiceEnabled ? "tel:" + H.tel : "sms:" + H.tel + "?body=31061";
-    bc.textContent = (H.voiceEnabled ? "📞 " : "💬 ") + H.display;
+    bc.innerHTML = `<span aria-hidden="true">${H.voiceEnabled ? "📞" : "💬"}</span> ${esc(H.display)}`;
+    bc.setAttribute("aria-label", (H.voiceEnabled ? "Call " : "Text ") + H.display);
   })();
 
   // ---------- Pantry cards ----------
@@ -56,15 +58,19 @@
         <p class="meta">${esc(p.address)} · ${r.dist.toFixed(1)} mi away</p>
         ${p.note ? `<span class="note">${esc(p.note)}</span>` : ""}
         ${weekHtml(p, now)}
-        <div class="actions"><a class="dir" href="${dir}" target="_blank" rel="noopener">🧭 Directions</a>
-          <a class="tel" href="tel:${esc(p.phone.replace(/[^\d+]/g, ""))}">📞 ${esc(p.phone)}</a></div>
+        <div class="actions"><a class="dir" href="${dir}" target="_blank" rel="noopener" aria-label="Directions to ${esc(p.name)} (opens in a new tab)"><span aria-hidden="true">🧭</span> Directions</a>
+          <a class="tel" href="tel:${esc(p.phone.replace(/[^\d+]/g, ""))}" aria-label="Call ${esc(p.name)} at ${esc(p.phone)}"><span aria-hidden="true">📞</span> ${esc(p.phone)}</a></div>
       </article>`;
     }).join("");
   }
 
   // ---------- Map (no tiles, so it works offline and on stage) ----------
   function renderMap(rows) {
-    const W = 640, Ht = 380, pad = 64, NS = "http://www.w3.org/2000/svg";
+    // Phone-sized screens get a taller, narrower drawing so labels stay at a readable size.
+    const narrow = window.innerWidth < 560, W = narrow ? 340 : 640, Ht = narrow ? 460 : 380, pad = narrow ? 74 : 64;
+    mapNarrow = narrow;
+    $("map").setAttribute("viewBox", `0 0 ${W} ${Ht}`);
+    $("map").classList.toggle("narrow", narrow);
     const pts = [where, ...P.map((p) => [p.lat, p.lng])];
     const lat0 = pts.reduce((s, p) => s + p[0], 0) / pts.length, kx = Math.cos((lat0 * Math.PI) / 180);
     const xs = pts.map((p) => p[1] * kx), ys = pts.map((p) => -p[0]);
@@ -87,11 +93,14 @@
       const p = r.p, cx = X([p.lat, p.lng]), cy = Y([p.lat, p.lng]), open = r.state === "open";
       // A pin near "You" puts its label on the side away from you, so the two labels never collide.
       const up = Math.hypot(cx - ux, cy - uy) < 70 ? cy < uy : cy > Ht / 2;
-      const nm = p.name.replace(" - Maddox Investing in America", "").replace(" Church Pantry", " Pantry");
-      g += `<g class="pin ${open ? "open" : "closed"}" data-i="${P.indexOf(p)}" tabindex="0" role="button" aria-label="${esc(p.name)}, ${open ? "open now" : "closed"}">` +
+      const nm = p.name.replace(" - Maddox Investing in America", "").replace(" Church Pantry", " Pantry").replace(" Ministries", "");
+      const anchor = cx < 130 ? "start" : cx > W - 130 ? "end" : "middle", lx = anchor === "start" ? cx - 12 : anchor === "end" ? cx + 12 : cx;
+      const y1 = cy + (up ? -32 : 28), y2 = cy + (up ? -18 : 42);
+      g += `<g class="pin ${open ? "open" : "closed"}" data-i="${P.indexOf(p)}" tabindex="0" role="button" aria-label="${esc(p.name)}, ${open ? "open now" : "closed"}. Show details.">` +
         (open ? `<circle class="halo" cx="${cx}" cy="${cy}" r="11"/>` : "") +
         `<circle class="dot" cx="${cx}" cy="${cy}" r="11"/>` +
-        `<text class="lbl" x="${cx}" y="${cy + (up ? -19 : 29)}" text-anchor="middle">${esc(nm)}</text></g>`;
+        `<text class="lbl" x="${lx}" y="${y1}" text-anchor="${anchor}">${esc(nm)}</text>` +
+        `<text class="lbl sub ${open ? "open" : "closed"}" x="${lx}" y="${y2}" text-anchor="${anchor}">${open ? "Open now" : "Closed"}</text></g>`;
     }
     g += `<circle class="you" cx="${ux}" cy="${uy}" r="8"/><text class="youlbl" x="${ux}" y="${uy - 15}" text-anchor="middle">You</text>`;
     $("map").innerHTML = g;
@@ -122,8 +131,13 @@
     $("tmlabel").textContent = (demo ? "Demo: " : "Live: ") + longStamp(n);
     $("tmlabel").classList.toggle("demo", demo !== null);
     $("tmlive").hidden = demo === null;
-    $("tmdays").querySelectorAll("button").forEach((b) => b.classList.toggle("on", demo !== null && +b.dataset.d === selDay));
-    $("tmtime").value = Math.min(1200, Math.max(360, demo !== null ? selMin : Math.floor((n - F.dayStart(n)) / 60000)));
+    $("tmdays").querySelectorAll("button").forEach((b) => {
+      const on = demo !== null && +b.dataset.d === selDay;
+      b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on));
+    });
+    const mins = Math.min(1200, Math.max(360, demo !== null ? selMin : Math.floor((n - F.dayStart(n)) / 60000)));
+    $("tmtime").value = mins;
+    $("tmtime").setAttribute("aria-valuetext", F.fmtTime(F.dayStart(n) + mins * 60000));
     $("trynote").textContent = demo ? `(Using demo time: ${longStamp(n)})` : "";
   }
   function applyDemo() { demo = baseDay() + selDay * F.DAY + selMin * 60000; update(false); }
@@ -178,8 +192,8 @@
   // ---------- Delivery section ----------
   $("dlist").innerHTML = D.map((d) => {
     const act = d.phone
-      ? `<a class="call" href="tel:${esc(d.phone.replace(/[^\d+]/g, "").replace(/(\d{10})(\d+)/, "$1,$2"))}">📞 ${esc(d.phone)}</a>`
-      : `<a class="call" href="${esc(d.website)}" target="_blank" rel="noopener">Visit website</a>`;
+      ? `<a class="call" href="tel:${esc(d.phone.replace(/[^\d+]/g, "").replace(/(\d{10})(\d+)/, "$1,$2"))}" aria-label="Call ${esc(d.name)} at ${esc(d.phone)}"><span aria-hidden="true">📞</span> ${esc(d.phone)}</a>`
+      : `<a class="call" href="${esc(d.website)}" target="_blank" rel="noopener" aria-label="Visit the ${esc(d.name)} website (opens in a new tab)">Visit website</a>`;
     return `<div class="dcard"><h3>${esc(d.name)}</h3><p>${esc(d.who)}</p>${d.hours ? `<small>${esc(d.hours)}</small>` : ""}${act}</div>`;
   }).join("");
 
@@ -238,12 +252,13 @@
       run(F.ivr(step, digits, ctx, nowMs(), pantriesForCall(), D));
     }
   }
-  $("pad").innerHTML = "123456789*0#".split("").map((k) => `<button type="button" data-k="${k}">${k}</button>`).join("");
+  $("pad").innerHTML = "123456789*0#".split("").map((k) => `<button type="button" data-k="${k}" aria-label="Key ${k === "*" ? "star" : k === "#" ? "pound" : k}">${k}</button>`).join("");
   $("pad").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => press(b.dataset.k)));
   $("callgo").addEventListener("click", startCall);
   $("callstop").addEventListener("click", () => hangup(true));
 
   // ---------- Go ----------
+  window.addEventListener("resize", () => { if ((window.innerWidth < 560) !== mapNarrow) update(false); });
   buildDays();
   const n0 = F.etNow(); selMin = Math.floor((n0 - F.dayStart(n0)) / 60000);
   update(true);

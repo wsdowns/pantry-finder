@@ -126,7 +126,7 @@
 
   // One step of the phone line. Returns {say:[...], ask:{prompt,digits,step,ctx}|undefined, end?:true}.
   function ivr(step, digits, ctx, nowMs, pantries, delivery) {
-    const menu = { say: ["Welcome to Milledgeville food help."],
+    const menu = { say: ["Welcome to Milledgeville food assistance."],
       ask: { prompt: "Press 1 to find a food pantry near you. Press 2 for home delivery.", digits: 1, step: "menu", ctx: {} } };
     const askZip = (say) => ({ say, ask: { prompt: "Enter your 5 digit ZIP code.", digits: 5, step: "zip", ctx: {} } });
     if (!step) return menu;

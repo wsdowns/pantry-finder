@@ -20,7 +20,7 @@ Tests: `node --test site/finder.test.js` (mirrors the Python tests so site and t
 Host it free on GitHub Pages, Netlify, or Cloudflare Pages by publishing the `site/` folder.
 
 ## Demo script (about 3 minutes, works with no Twilio and with every pantry closed)
-1. **The problem (20s).** Open the site. "Food help is scattered across Facebook pages, directories and phone trees, and the hours are short: Chard Wray is open about 9 hours a week."
+1. **The problem (20s).** Open the site. "Food assistance is scattered across Facebook pages, directories and phone trees, and the hours are short: Chard Wray is open about 9 hours a week."
 2. **Time machine (40s).** Click "Tue 10am: two open": map pins turn green, cards say Open now. Then "Sat 3pm: all closed" to show it never sends anyone to a locked door. Use the day buttons and slider to scrub the week.
 3. **Map (20s).** Click a pin; the page jumps to its card with hours, directions and a tap-to-call number. Search "GCSU" to move the "You" marker.
 4. **Text line (40s).** In "Try the text line", tap `31061`, then `delivery`. "This is the same code that answers real texts. A test checks the website and the text line give identical answers."

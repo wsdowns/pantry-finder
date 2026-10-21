@@ -184,7 +184,7 @@ def voice(step="", digits="", zip_code="", n="", dial_status="", now=None):
     """TwiML for the phone line. step: '' menu, 'menu', 'zip', 'pick', 'after'."""
     now = now or datetime.now(TZ)
     goodbye = _say("We did not get that. Goodbye.")
-    menu = _twiml(_say("Welcome to Milledgeville food help."),
+    menu = _twiml(_say("Welcome to Milledgeville food assistance."),
                   _gather("Press 1 to find a food pantry near you. Press 2 for home delivery.", "/voice?step=menu", 1), goodbye)
     if step == "":
         return menu
