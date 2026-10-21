@@ -83,6 +83,12 @@
   .chip { font: inherit; font-size: .92rem; font-weight: 700; padding: 8px 14px; min-height: 44px; display: inline-flex; align-items: center; border-radius: 999px; border: 1px solid var(--line);
     background: var(--card); color: var(--ink); cursor: pointer; text-decoration: none; }
   .chip:hover { border-color: var(--accent); }
+  form.find { scroll-margin-top: 84px; }
+  .startprompt { margin: 14px 0 0; padding: 14px 16px; border-radius: 16px; background: var(--card); border: 2px solid var(--accent); box-shadow: var(--shadow); }
+  .startprompt b { font-size: 1.05rem; }
+  .startprompt .startopts { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 10px 0 4px; }
+  .startprompt a { font-weight: 800; color: var(--accent); min-height: 44px; display: inline-flex; align-items: center; }
+  .startprompt small { display: block; color: var(--muted); }
   .privacy { margin: 10px 4px 0; color: var(--muted); font-size: .85rem; max-width: 62ch; }
   #msg { min-height: 1.4em; margin: 12px 4px 0; color: var(--muted); font-weight: 600; }
 
@@ -288,6 +294,14 @@
       <button class="chip" type="button" data-q="GCSU">GCSU</button>
       <button class="chip" type="button" data-q="downtown">Downtown</button>
       <a class="chip" href="#delivery">🚪 Can't get out? Get food delivered</a>
+    </div>
+    <div id="startprompt" class="startprompt" role="alert" hidden>
+      <b>Where are you starting from?</b> Type your address or ZIP code in the box above, then tap Directions again.
+      <span class="startopts">
+        <button class="chip" type="button" id="startloc"><span aria-hidden="true">📍</span> Use my location</button>
+        <a id="startskip" href="#" target="_blank" rel="noopener">Open Google Maps anyway</a>
+      </span>
+      <small>"Anyway" opens Google Maps and lets it use your phone's location, or ask you.</small>
     </div>
     <p id="addrnote" class="privacy">A street address is optional, for exact distances. If you type one, it is sent to the U.S. Census Bureau's address lookup to find your spot. We don't store it.</p>
     <p id="msg" role="status" aria-live="polite"></p>

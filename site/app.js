@@ -11,6 +11,16 @@
   };
 
   let where = F.PLACES.downtown, label = "downtown Milledgeville";
+  // Where Directions start. null = unknown, so Google uses the device's own location (we only assume downtown for the map).
+  let origin = null;
+  const PLACE_ORIGIN = { gcsu: "Georgia College & State University", "georgia college": "Georgia College & State University",
+    gmc: "Georgia Military College", "georgia military college": "Georgia Military College", downtown: "Downtown Milledgeville",
+    "central state": "Central State Hospital" };
+  function originForPlace(text) {
+    const q = String(text).trim().toLowerCase(), key = Object.keys(F.PLACES).find((k) => q.includes(k));
+    if (!key) return null;
+    return /^\d{5}$/.test(key) ? `${key}, Milledgeville, GA` : (PLACE_ORIGIN[key] ? `${PLACE_ORIGIN[key]}, Milledgeville, GA` : null);
+  }
   let demo = null;                     // null = live; otherwise a naive-ET ms the time machine chose
   const nowMs = () => (demo ?? F.etNow());
 
@@ -50,14 +60,14 @@
       const p = r.p, open = r.state === "open", idx = P.indexOf(p);
       const status = open ? `Open now · until ${F.fmt(r.when, now)}`
         : r.when ? `Closed · opens ${F.fmt(r.when, now)}` : "Check hours";
-      const dir = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
+      const dir = F.directionsUrl(p, origin);
       return `<article class="card${open ? " is-open" : ""}" id="card-${idx}" style="${animate ? `animation-delay:${i * 70}ms` : "animation:none"}">
         <div class="top"><h2>${esc(p.name)}</h2>
           <span class="status${open ? " open" : ""}"><span class="dot"></span>${esc(status)}</span></div>
         <p class="meta">${esc(p.address)} · ${r.dist.toFixed(1)} mi away</p>
         ${p.note ? `<span class="note">${esc(p.note)}</span>` : ""}
         ${weekHtml(p, now)}
-        <div class="actions"><a class="dir" href="${dir}" target="_blank" rel="noopener" aria-label="Directions to ${esc(p.name)} (opens in a new tab)"><span aria-hidden="true">🧭</span> Directions</a>
+        <div class="actions"><a class="dir" href="${dir}"${origin ? "" : ' data-nostart="1"'} target="_blank" rel="noopener" aria-label="Directions to ${esc(p.name)} (opens in a new tab)"><span aria-hidden="true">🧭</span> Directions</a>
           <a class="tel" href="tel:${esc(p.phone.replace(/[^\d+]/g, ""))}" aria-label="Call ${esc(p.name)} at ${esc(p.phone)}"><span aria-hidden="true">📞</span> ${esc(p.phone)}</a></div>
       </article>`;
     }).join("");
@@ -176,9 +186,31 @@
   $("tmlive").addEventListener("click", () => { demo = null; update(false); });
 
   // ---------- Search ----------
+  // Directions with no known start point would let Google guess (on a computer, often from the internet connection, so a
+  // wrong city). Instead, ask for a start first, with a one-tap way to let Google use the phone's own location.
+  let waitingForStart = false;
+  function askForStart(href) {
+    waitingForStart = true;
+    $("startskip").href = href;
+    $("startprompt").hidden = false;
+    $("form").scrollIntoView({ behavior: "smooth", block: "start" }); // search box at the top, prompt just below it
+    $("q").focus({ preventScroll: true });
+  }
+  $("list").addEventListener("click", (e) => {
+    const a = e.target.closest("a.dir[data-nostart]");
+    if (!a) return;
+    e.preventDefault();
+    askForStart(a.href);
+  });
+  $("startloc").addEventListener("click", () => $("loc").click());
+
   function update(animate = false) {
     const now = nowMs(), rows = F.rank(where, now, P);
     $("msg").textContent = `Showing pantries near ${label}.`;
+    if (origin) {
+      $("startprompt").hidden = true;
+      if (waitingForStart) { $("msg").textContent += " Tap Directions again to start from here."; waitingForStart = false; }
+    }
     renderCards(rows, now, animate);
     renderMap(rows);
     syncTm();
@@ -211,13 +243,13 @@
 
   async function search(text) {
     const pt = F.locate(text);
-    if (pt) { where = pt; label = String(text).trim(); update(true); return; }
+    if (pt) { where = pt; label = String(text).trim(); origin = originForPlace(text); update(true); return; }
     if (looksLikeAddress(text)) {
       $("msg").textContent = "Looking up that address...";
       const g = await geocode(text);
       if (!g) { $("msg").textContent = "We couldn't find that address. Check the spelling, add the ZIP, or search by ZIP code."; return; }
       if (!inArea(g.pt)) { $("msg").textContent = "That address looks to be outside the Milledgeville area. Try a ZIP code instead."; return; }
-      where = g.pt; label = g.matched; update(true); return;
+      where = g.pt; label = g.matched; origin = g.matched; update(true); return;
     }
     $("msg").textContent = "Try a ZIP (31061, 31062, 31059), a street address, or a place like GCSU or downtown.";
   }
@@ -227,7 +259,7 @@
     if (!navigator.geolocation) { $("msg").textContent = "Location isn't available here. Try a ZIP code."; return; }
     $("msg").textContent = "Finding you...";
     navigator.geolocation.getCurrentPosition(
-      (pos) => { where = [pos.coords.latitude, pos.coords.longitude]; label = "your location"; update(true); },
+      (pos) => { where = [pos.coords.latitude, pos.coords.longitude]; label = "your location"; origin = `${where[0]},${where[1]}`; update(true); },
       () => { $("msg").textContent = "Couldn't get your location. Try a ZIP code."; },
       { timeout: 8000 });
   });
@@ -251,7 +283,7 @@
       let reply = F.smsAnswer(text, nowMs(), P, D);
       if (reply.startsWith("Sorry, I couldn't find") && looksLikeAddress(text)) {
         const g = await geocode(text);
-        reply = g && inArea(g.pt) ? `Matched address: ${g.matched}\n\n` + F.smsAnswer(text, nowMs(), P, D, g.pt)
+        reply = g && inArea(g.pt) ? `Matched address: ${g.matched}\n\n` + F.smsAnswer(text, nowMs(), P, D, g.pt, g.matched)
           : "Sorry, I couldn't find that address. Try adding the ZIP code, or text a ZIP like 31061.";
       }
       typing.remove(); addMsg("bot", linkify(reply));

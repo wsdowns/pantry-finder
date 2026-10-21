@@ -103,7 +103,15 @@
   }
 
   // whereOverride: coordinates already looked up for a street address (the browser geocodes those itself).
-  function smsAnswer(text, nowMs, pantries, delivery, whereOverride) {
+  // Mirrors pantry.py's directions_url(): the text Google resolves to the real place (right label), else exact coordinates.
+  // Without an origin, Google starts from the device's own location.
+  function directionsUrl(p, origin) {
+    const dest = p.maps_query ? encodeURIComponent(p.maps_query) : `${p.lat},${p.lng}`;
+    return `https://www.google.com/maps/dir/?api=1&destination=${dest}` + (origin ? `&origin=${encodeURIComponent(origin)}` : "");
+  }
+
+  // matchedAddress: the looked-up address, used as the start point of the directions link (like pantry.py).
+  function smsAnswer(text, nowMs, pantries, delivery, whereOverride, matchedAddress) {
     if (DELIVERY_WORDS.some((w) => text.toLowerCase().includes(w))) return deliveryAnswer(delivery);
     const where = whereOverride || locate(text);
     if (!where) return "Sorry, I couldn't find that place. Text a ZIP (31061), a landmark (GCSU), or a street address.";
@@ -111,7 +119,7 @@
       const head = r.state === "open" ? `OPEN NOW until ${fmt(r.when, nowMs)}` : `Closed, opens ${fmt(r.when, nowMs)}`;
       const note = r.p.note ? ` (${r.p.note})` : "";
       let line = `${r.p.name} - ${head}\n${r.p.address} - ${r.dist.toFixed(1)} mi\n${r.p.phone}${note}`;
-      if (i === 0) line += `\nhttps://www.google.com/maps/dir/?api=1&destination=${r.p.lat},${r.p.lng}`;
+      if (i === 0) line += "\n" + directionsUrl(r.p, matchedAddress);
       return line;
     });
     return lines.join("\n\n") + "\n\nHours change; call first. Reply with another ZIP to search again.";
@@ -165,6 +173,6 @@
   }
 
   root.Finder = { PLACES, etNow, windowsOn, status, miles, locate, rank, fmt, fmtTime, dayStart, DAY, HOUR,
-    smsAnswer, deliveryAnswer, ivr, speakPhone, forwardNumber };
+    smsAnswer, deliveryAnswer, ivr, speakPhone, forwardNumber, directionsUrl };
   if (typeof module !== "undefined") module.exports = root.Finder;
 })(typeof window !== "undefined" ? window : globalThis);

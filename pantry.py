@@ -59,6 +59,14 @@ def _nice_address(matched):
     return matched.title().replace(", Ga,", ", GA,")
 
 
+def directions_url(p, origin=None):
+    """Google Maps directions to a pantry. The destination is the text Google resolves to the real place when we
+    have one (right name on the route), else exact coordinates. Without an origin Google starts from the device."""
+    dest = urllib.parse.quote(p["maps_query"], safe="") if p.get("maps_query") else f"{p['lat']},{p['lng']}"
+    url = f"https://www.google.com/maps/dir/?api=1&destination={dest}"
+    return url + "&origin=" + urllib.parse.quote(origin, safe="") if origin else url
+
+
 def miles(a, b):
     la1, lo1, la2, lo2 = map(math.radians, (*a, *b))
     h = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin((lo2 - lo1) / 2) ** 2
@@ -144,7 +152,8 @@ def answer(text, now=None):
         note = f" ({p['note']})" if p.get("note") else ""
         line = f"{p['name']} - {head}\n{p['address']} - {d:.1f} mi\n{p['phone']}{note}"
         if i == 0:  # directions link on the top result only, to keep the text short
-            line += f"\nhttps://www.google.com/maps/dir/?api=1&destination={p['lat']},{p['lng']}"
+            # start from the address the person gave, not wherever their phone happens to be
+            line += "\n" + directions_url(p, _nice_address(matched) if matched else None)
         lines.append(line)
     foot = "Hours change; call first. Reply with another ZIP to search again."
     head = f"Matched address: {_nice_address(matched)}\n\n" if matched else ""

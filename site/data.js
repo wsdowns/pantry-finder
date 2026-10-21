@@ -4,8 +4,9 @@ window.PANTRIES = [
     "address": "472 Broad St, Milledgeville, GA 31061",
     "phone": "(478) 414-1126",
     "note": "bring ID in case it's asked",
-    "lat": 33.0514566,
-    "lng": -83.2197824,
+    "lat": 33.0513642,
+    "lng": -83.2197769,
+    "maps_query": "Chard Wray Food Pantry, 454 Broad St, Milledgeville, GA 31062",
     "schedule": [
       {
         "weekday": 1,
@@ -29,8 +30,9 @@ window.PANTRIES = [
     "address": "200 Southside Dr, Milledgeville, GA 31061",
     "phone": "(478) 363-7444",
     "note": "bring ID with address; other days vary by source, call to confirm",
-    "lat": 33.0597581,
-    "lng": -83.2083504,
+    "lat": 33.0597037,
+    "lng": -83.2085197,
+    "maps_query": "New Beginning Outreach, 200 Southside Dr, Milledgeville, GA 31061",
     "schedule": [
       {
         "weekday": 3,
@@ -44,8 +46,9 @@ window.PANTRIES = [
     "address": "210 S Wayne St, Milledgeville, GA 31061",
     "phone": "(478) 452-9394",
     "note": "one visit every 4 weeks",
-    "lat": 33.077,
-    "lng": -83.233,
+    "lat": 33.0794744,
+    "lng": -83.2260399,
+    "maps_query": "First Presbyterian Church, 210 S Wayne St, Milledgeville, GA 31061",
     "schedule": [
       {
         "weekday": 1,

@@ -68,6 +68,26 @@ test("text line accepts coordinates for a looked-up street address", () => {
   assert.ok(F.smsAnswer("472 Broad St", now, P, DELIVERY).startsWith("Sorry, I couldn't find"));
 });
 
+test("directions link matches pantry.py: resolvable name when known, coordinates otherwise, origin encoded", () => {
+  const mia2 = P.find((p) => p.name.startsWith("MIA"));
+  assert.ok(F.directionsUrl(chard).includes("destination=Chard%20Wray%20Food%20Pantry%2C%20454%20Broad%20St"));
+  assert.ok(!F.directionsUrl(chard).includes("origin="));
+  assert.ok(F.directionsUrl(mia2).includes(`destination=${mia2.lat},${mia2.lng}`));
+  assert.ok(F.directionsUrl(chard, "Georgia College & State University, Milledgeville, GA")
+    .endsWith("&origin=Georgia%20College%20%26%20State%20University%2C%20Milledgeville%2C%20GA"));
+  const py = execFileSync("python3", ["-I", "-c", `import sys; sys.path.insert(0, ${JSON.stringify(ROOT)})\nimport pantry\n` +
+    `p = [x for x in pantry.PANTRIES if x['name'].startswith('Chard')][0]\nprint(pantry.directions_url(p, 'A & B, Milledgeville, GA'), end='')`]).toString();
+  assert.strictEqual(F.directionsUrl(chard, "A & B, Milledgeville, GA"), py);
+});
+
+test("directions link starts from the matched address, and only then", () => {
+  const now = at(2026, 10, 21, 10);
+  const withAddr = F.smsAnswer("204 E Hancock Street", now, P, DELIVERY, [33.0824, -83.2217], "204 E Hancock St, Milledgeville, GA, 31061");
+  const link = withAddr.split(/\s+/).find((w) => w.startsWith("https://www.google.com/maps/dir/"));
+  assert.ok(link.includes("&origin=204%20E%20Hancock%20St%2C%20Milledgeville%2C%20GA%2C%2031061"), link);
+  assert.ok(!F.smsAnswer("31061", now, P, DELIVERY).includes("origin="));
+});
+
 test("phone line: menu, ZIP, delivery, connect only when open and enabled", () => {
   const now = at(2026, 10, 21, 10);
   assert.ok(F.ivr("", "", {}, now, P, DELIVERY).ask.prompt.startsWith("Press 1"));

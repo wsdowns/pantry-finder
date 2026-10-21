@@ -90,6 +90,18 @@ class Address(unittest.TestCase):
         self.assertTrue(out.startswith("Matched address: 210 N Wayne St, Milledgeville, GA, 31061\n\n"))
         self.assertIn("Chard Wray", out)
 
+    def test_directions_start_from_the_address_given(self):
+        # Without an origin, Google starts from the phone's own location (which was showing Marietta).
+        out = self.with_geocode(((33.0824, -83.2217), "204 E HANCOCK ST, MILLEDGEVILLE, GA, 31061"), "204 E Hancock Street")
+        links = [l for l in out.split() if l.startswith("https://www.google.com/maps/dir/")]
+        self.assertEqual(len(links), 1)
+        self.assertIn("&origin=204%20E%20Hancock%20St%2C%20Milledgeville%2C%20GA%2C%2031061", links[0])
+        self.assertIn("destination=", links[0])
+
+    def test_zip_directions_have_no_origin(self):
+        out = pantry.answer("31061", self.NOW)
+        self.assertNotIn("origin=", out)
+
     def test_far_away_address_is_rejected(self):
         out = self.with_geocode(((33.7490, -84.3880), "1 PEACHTREE ST, ATLANTA, GA, 30303"))
         self.assertIn("outside the Milledgeville area", out)
@@ -105,6 +117,29 @@ class Address(unittest.TestCase):
             self.assertIn("Chard Wray", pantry.answer("31061", self.NOW))
         finally:
             pantry.geocode = orig
+
+
+class Directions(unittest.TestCase):
+    MIA = next(p for p in pantry.PANTRIES if p["name"].startswith("MIA"))
+
+    def test_uses_the_place_google_resolves_when_we_have_it(self):
+        url = pantry.directions_url(CHARD)
+        self.assertIn("destination=Chard%20Wray%20Food%20Pantry%2C%20454%20Broad%20St", url)
+        self.assertNotIn("origin=", url)  # no start known: Google uses the device's location
+
+    def test_falls_back_to_exact_coordinates(self):
+        # Google doesn't find MIA by name, so a text destination would be a guess.
+        self.assertNotIn("maps_query", self.MIA)
+        self.assertIn(f"destination={self.MIA['lat']},{self.MIA['lng']}", pantry.directions_url(self.MIA))
+
+    def test_origin_is_added_and_encoded(self):
+        url = pantry.directions_url(CHARD, "Georgia College & State University, Milledgeville, GA")
+        self.assertTrue(url.endswith("&origin=Georgia%20College%20%26%20State%20University%2C%20Milledgeville%2C%20GA"))
+
+    def test_first_presbyterian_is_where_google_puts_it(self):
+        fp = next(p for p in pantry.PANTRIES if p["name"].startswith("First Presbyterian"))
+        self.assertAlmostEqual(fp["lat"], 33.0795, places=3)
+        self.assertAlmostEqual(fp["lng"], -83.2260, places=3)
 
 
 class Voice(unittest.TestCase):

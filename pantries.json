@@ -1,12 +1,13 @@
 {
-  "_comment": "Weekday: Mon=0. 'nth' = nth weekday of month. Sources compared 2026-10-21 (see 'Pantry table.docx'): pantry sites, Middle Georgia Community Food Bank/county guide, Georgia College, Lemontree, WhyHunger, findhelp. Where sources conflict only the overlap is listed (New Beginnings: Thursday). Nothing here is phone-confirmed yet. Chard Wray: own site says 454 Broad St, most other sources 472. MIA: own site and food bank say 453-2221, Lemontree says 696-0112. lat/lng for First Presbyterian is approximate.",
+  "_comment": "Weekday: Mon=0. 'nth' = nth weekday of month. Sources compared 2026-10-21 (see 'Pantry table.docx'): pantry sites, Middle Georgia Community Food Bank/county guide, Georgia College, Lemontree, WhyHunger, findhelp. Where sources conflict only the overlap is listed (New Beginnings: Thursday). Nothing here is phone-confirmed yet. Chard Wray: own site says 454 Broad St, most other sources 472. MIA: own site and food bank say 453-2221, Lemontree says 696-0112. Coordinates for Chard Wray, New Beginnings and First Presbyterian come from the places Google Maps resolves (2026-10-21); First Presbyterian was previously a guess about 0.4 mi off. MIA is not found by name on Google Maps, so it keeps Lemontree's coordinates and directions use them directly. 'maps_query' is the text Google resolves to the real place (right label on the route); pantries without it use coordinates. Google's listing for Chard Wray says 454 Broad St, matching the pantry's own site, while the address shown here is 472.",
   "pantries": [
     {
       "name": "Chard Wray Food Pantry",
       "address": "472 Broad St, Milledgeville, GA 31061",
       "phone": "(478) 414-1126",
       "note": "bring ID in case it's asked",
-      "lat": 33.0514566, "lng": -83.2197824,
+      "lat": 33.0513642, "lng": -83.2197769,
+      "maps_query": "Chard Wray Food Pantry, 454 Broad St, Milledgeville, GA 31062",
       "schedule": [
         {"weekday": 1, "start": "09:00", "end": "12:00"},
         {"weekday": 2, "start": "09:00", "end": "12:00"},
@@ -18,7 +19,8 @@
       "address": "200 Southside Dr, Milledgeville, GA 31061",
       "phone": "(478) 363-7444",
       "note": "bring ID with address; other days vary by source, call to confirm",
-      "lat": 33.0597581, "lng": -83.2083504,
+      "lat": 33.0597037, "lng": -83.2085197,
+      "maps_query": "New Beginning Outreach, 200 Southside Dr, Milledgeville, GA 31061",
       "schedule": [
         {"weekday": 3, "start": "12:00", "end": "13:00"}
       ]
@@ -28,7 +30,8 @@
       "address": "210 S Wayne St, Milledgeville, GA 31061",
       "phone": "(478) 452-9394",
       "note": "one visit every 4 weeks",
-      "lat": 33.0770, "lng": -83.2330,
+      "lat": 33.0794744, "lng": -83.2260399,
+      "maps_query": "First Presbyterian Church, 210 S Wayne St, Milledgeville, GA 31061",
       "schedule": [
         {"weekday": 1, "start": "09:30", "end": "10:30"}
       ]

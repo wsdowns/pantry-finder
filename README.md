@@ -19,6 +19,10 @@ When the Twilio number exists, fill in `site/config.js` (display, tel, and `voic
 The map is Leaflet 1.9.4 (vendored in `site/vendor/leaflet/`, checked against the published SRI hashes) on OpenStreetMap tiles. Pins, distance rings and the route line are drawn by our code. Pins are keyboard-accessible (Enter or Space jumps to the pantry card), one-finger drag is off on touch screens so the page still scrolls, and the zoom buttons are 44px.
 - OpenStreetMap's public tile server is fine for a demo and light use but not for heavy traffic ([usage policy](https://operations.osmfoundation.org/policies/tiles/)). Before a real launch, switch the tile URL in `site/app.js` to a hosted tile provider or your own tiles.
 - Tile requests show visitors' IP addresses to the tile server; the page says so under the map. If the tiles can't load (offline), the pins, rings and distances still work and a note appears.
+Directions (Google Maps links, built by `directions_url` in `pantry.py` and `directionsUrl` in `site/finder.js`, kept identical by a test):
+- **Start point:** a typed address, ZIP, landmark or "Use my location" becomes the start. With no start known, the website's Directions button does not open Google (which would guess from the device or internet connection, and once showed Marietta); it moves to the location box and asks, with a "Open Google Maps anyway" option for phones that know where they are. The text line's link only gets a start when an address was given; on a phone, Google then uses the phone's location.
+- **Destination:** the pantry's `maps_query` (text Google resolves to the real place, so the route shows the right name) when present, else exact coordinates. MIA has no `maps_query` because Google doesn't find it by name.
+- Pantry coordinates come from the places Google resolves; check them again if a pantry moves.
 Tests: `node --test site/finder.test.js` (mirrors the Python tests so site and text line agree).
 Host it free on GitHub Pages, Netlify, or Cloudflare Pages by publishing the `site/` folder.
 
