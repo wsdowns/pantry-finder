@@ -129,12 +129,85 @@
   footer { margin: 30px 0 60px; color: var(--muted); font-size: .9rem; }
   footer p { margin: 0 0 8px; max-width: 70ch; }
 
+  /* time machine */
+  .tm { margin: 14px 0 0; background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 6px 16px 16px; box-shadow: var(--shadow); }
+  .tm summary { cursor: pointer; font-weight: 800; padding: 10px 0; list-style: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tm summary::-webkit-details-marker { display: none; }
+  .tmicon { font-size: 1.2em; }
+  .tmlabel { margin-left: auto; font-weight: 800; font-size: .9rem; padding: 4px 12px; border-radius: 999px; background: var(--bg2); color: var(--accent); }
+  .tmlabel.demo { background: var(--accent); color: var(--accent-ink); }
+  .tmhelp { margin: 0 0 12px; color: var(--muted); font-size: .95rem; }
+  .seg { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .seg button { font: inherit; font-size: .82rem; font-weight: 800; padding: 10px 2px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg2); color: var(--ink); cursor: pointer; min-height: 44px; }
+  .seg button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .slider { display: grid; gap: 4px; margin: 14px 0 4px; font-weight: 800; font-size: .9rem; }
+  .slider input { width: 100%; accent-color: var(--accent); height: 32px; }
+  .tm .chips { margin: 10px 0; }
+
+  /* map */
+  .mapwrap { margin: 16px 0 0; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 10px; box-shadow: var(--shadow); }
+  #map { width: 100%; height: auto; display: block; border-radius: 14px; background: var(--bg2); }
+  #map .grid { stroke: var(--line); stroke-width: 1; opacity: .55; }
+  #map .ring { fill: none; stroke: var(--accent); stroke-width: 1.4; stroke-dasharray: 5 6; opacity: .45; }
+  #map .ringlbl { fill: var(--muted); font-size: 11px; font-weight: 800; }
+  #map .path { stroke: var(--accent); stroke-width: 2.4; stroke-dasharray: 2 7; stroke-linecap: round; opacity: .8; }
+  #map .pin { cursor: pointer; outline: none; }
+  #map .pin circle.dot { stroke: var(--card); stroke-width: 3; }
+  #map .pin.open circle.dot { fill: var(--open); }
+  #map .pin.closed circle.dot { fill: #c79a2a; }
+  #map .pin .halo { fill: var(--open); opacity: .35; transform-box: fill-box; transform-origin: center; animation: halo 1.8s ease-out infinite; }
+  #map .pin:focus-visible circle.dot, #map .pin:hover circle.dot { stroke: var(--ink); }
+  #map .lbl { fill: var(--ink); font-size: 12.5px; font-weight: 800; paint-order: stroke; stroke: var(--bg2); stroke-width: 4px; stroke-linejoin: round; }
+  #map .you { fill: #003366; stroke: #fff; stroke-width: 3; }
+  #map .youlbl { fill: var(--ink); font-size: 12px; font-weight: 800; paint-order: stroke; stroke: var(--bg2); stroke-width: 4px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 10px 8px 2px; color: var(--muted); font-size: .85rem; font-weight: 700; }
+  .lg { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .lg.open { background: var(--open); } .lg.closed { background: #c79a2a; } .lg.you { background: #003366; }
+  .card.flash { animation: flash 1.2s ease; }
+
+  /* try it: phone simulators */
+  .try { margin: 36px 0 6px; padding: 24px 20px; border-radius: 24px; background: linear-gradient(160deg, #005028, #003319); color: #fff; box-shadow: var(--shadow); scroll-margin-top: 70px; }
+  .try h2 { margin: 0 0 8px; font-size: clamp(1.4rem, 5vw, 1.9rem); }
+  .try .dlead { color: rgba(255,255,255,.82); }
+  .trynote { display: inline-block; font-weight: 800; color: #b3d1a9; }
+  .phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 22px; margin-top: 12px; }
+  .phone { background: var(--card); color: var(--ink); border-radius: 30px; border: 7px solid #0b1a12; padding: 0 0 12px; display: flex; flex-direction: column; min-height: 520px; box-shadow: 0 18px 40px -14px rgba(0,0,0,.6); overflow: hidden; }
+  .phead { background: #0b1a12; color: #fff; padding: 10px 16px 12px; display: grid; }
+  .phead small { color: #b3d1a9; font-size: .78rem; }
+  .msgs, .screen { flex: 1; overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 8px; max-height: 340px; background: var(--bg2); }
+  .bub { max-width: 88%; padding: 9px 12px; border-radius: 16px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .92rem; line-height: 1.4; animation: rise .3s both; }
+  .bub.me { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 4px; }
+  .bub.bot { align-self: flex-start; background: var(--card); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .bub a { color: inherit; font-weight: 800; }
+  .bub.typing { color: var(--muted); letter-spacing: 3px; }
+  .pchips { margin: 8px 12px 0; }
+  .pchips .chip { font-size: .82rem; padding: 6px 12px; }
+  .pform { display: flex; gap: 8px; margin: 8px 12px 0; }
+  .pform input { flex: 1; min-width: 0; font: inherit; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  .pform button { font: inherit; font-weight: 800; border: 0; border-radius: 12px; padding: 0 16px; background: var(--accent); color: var(--accent-ink); cursor: pointer; min-height: 44px; }
+  .cline { padding: 8px 12px; border-radius: 12px; font-size: .92rem; background: var(--card); border: 1px solid var(--line); animation: rise .3s both; }
+  .cline.you { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 800; }
+  .cline.sys { background: transparent; border: 1px dashed var(--line); color: var(--muted); }
+  .keybuf { text-align: center; font: 700 1.4rem/1.2 "Oswald", sans-serif; letter-spacing: .2em; min-height: 1.8rem; margin: 8px 0 0; color: var(--accent); }
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 6px 18px 0; }
+  .pad button { font: 700 1.3rem "Oswald", sans-serif; padding: 11px 0; border-radius: 14px; border: 1px solid var(--line); background: var(--bg2); color: var(--ink); cursor: pointer; min-height: 48px; }
+  .pad button:active { background: var(--accent); color: var(--accent-ink); }
+  .callbar { display: flex; gap: 10px; padding: 10px 18px 0; }
+  .callbtn { flex: 1; font: inherit; font-weight: 800; border: 0; border-radius: 14px; padding: 12px; cursor: pointer; min-height: 48px; }
+  .callbtn.go { background: var(--open); color: #fff; } .callbtn.stop { background: #b3261e; color: #fff; }
+  .callbtn:disabled { opacity: .4; cursor: default; }
+  .opts { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; padding: 10px 12px 0; font-size: .82rem; font-weight: 700; color: var(--muted); }
+  .opts label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  @media (prefers-color-scheme: dark) { .phone { border-color: #000; } }
+
   /* GCSU type: Oswald headings, Mulish body */
   h1, h2, h3, .brand, .hotline .num { font-family: "Oswald", "Arial Narrow", Arial, sans-serif; }
   h1 { text-transform: uppercase; letter-spacing: .01em; font-weight: 700; line-height: 1.08; }
   h2, h3, .brand { letter-spacing: .01em; font-weight: 600; }
   .hotline .num { letter-spacing: .01em; font-weight: 700; }
 
+  @keyframes halo { 0% { transform: scale(.6); opacity: .55; } 100% { transform: scale(2.4); opacity: 0; } }
+  @keyframes flash { 0%, 100% { box-shadow: var(--shadow); } 30% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 45%, transparent); } }
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; } 70% { box-shadow: 0 0 0 9px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
   @keyframes ring { 0%, 100% { box-shadow: 0 0 0 0 var(--glow); } 50% { box-shadow: 0 0 0 10px transparent; } }
   @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -173,7 +246,50 @@
       <a class="chip" href="#delivery">🚪 Can't get out? Get food delivered</a>
     </div>
     <p id="msg" role="status" aria-live="polite"></p>
+
+    <details class="tm" id="tm" open>
+      <summary><span class="tmicon">⏱</span> Time machine <span id="tmlabel" class="tmlabel"></span></summary>
+      <p class="tmhelp">See how the week looks. Pick a day and slide the clock; the map, cards and both phone lines below all follow.</p>
+      <div id="tmdays" class="seg" role="group" aria-label="Day"></div>
+      <label class="slider"><span>Time of day</span>
+        <input id="tmtime" type="range" min="360" max="1200" step="15" aria-label="Time of day"></label>
+      <div class="chips" id="tmpresets"></div>
+      <button class="chip" type="button" id="tmlive">↺ Back to live time</button>
+    </details>
+
+    <div class="mapwrap">
+      <svg id="map" viewBox="0 0 640 380" role="img" aria-label="Map of nearby pantries, colored by open or closed"></svg>
+      <div class="legend"><span><i class="lg open"></i> Open now</span><span><i class="lg closed"></i> Closed</span><span><i class="lg you"></i> You</span></div>
+    </div>
+
     <div id="list" class="list" aria-live="polite"></div>
+  </section>
+
+  <section id="try" class="try" aria-labelledby="th">
+    <h2 id="th">Try the text line and the phone line</h2>
+    <p class="dlead">No signup and no app. These run the same logic as the real number, and they follow the time machine above. <span id="trynote" class="trynote"></span></p>
+    <div class="phones">
+      <div class="phone" aria-label="Text message simulator">
+        <div class="phead"><b>💬 Text line</b><small>text anything to the number</small></div>
+        <div class="msgs" id="msgs" aria-live="polite"></div>
+        <div class="chips pchips" id="smschips"></div>
+        <form class="pform" id="smsform"><input id="smsin" placeholder="Try 31061, GCSU, or delivery" autocomplete="off" aria-label="Message"><button type="submit">Send</button></form>
+      </div>
+      <div class="phone" aria-label="Phone call simulator">
+        <div class="phead"><b>📞 Phone line</b><small>press keys like a real call</small></div>
+        <div class="screen" id="callscreen" aria-live="polite"><div class="cline sys">Press Call to start.</div></div>
+        <div class="keybuf" id="keybuf" aria-live="polite">&nbsp;</div>
+        <div class="pad" id="pad"></div>
+        <div class="callbar">
+          <button type="button" class="callbtn go" id="callgo">📞 Call</button>
+          <button type="button" class="callbtn stop" id="callstop" disabled>Hang up</button>
+        </div>
+        <div class="opts">
+          <label><input type="checkbox" id="speak" checked> 🔊 Read aloud</label>
+          <label><input type="checkbox" id="fwd" checked> Demo call forwarding</label>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section id="delivery" class="deliv" aria-labelledby="dh">
@@ -197,91 +313,6 @@
 <script src="config.js"></script>
 <script src="data.js"></script>
 <script src="finder.js"></script>
-<script>
-(() => {
-  const F = window.Finder, P = window.PANTRIES, H = window.HOTLINE || {};
-  const $ = (id) => document.getElementById(id);
-  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  let where = F.PLACES.downtown, label = "downtown Milledgeville";
-
-  // Phone hero: show text number once configured; Call button only when the voice line is live.
-  (function hotline() {
-    if (!H.display || !H.tel) return;
-    const box = $("help"), num = $("hl-num"), btns = $("hl-btns");
-    box.classList.remove("soon");
-    $("hl-kicker").textContent = H.voiceEnabled ? "Text or call for help" : "Text for help";
-    num.textContent = H.display; num.href = "tel:" + H.tel;
-    $("hl-text").textContent = H.voiceEnabled
-      ? "Text your ZIP code and we text back the nearest open pantry. Prefer to talk? Call and press your ZIP on the keypad."
-      : "Text your ZIP code and we text back the nearest open pantry. No app or internet needed.";
-    btns.innerHTML = `<a class="btn" href="sms:${esc(H.tel)}?body=31061">💬 Text us</a>` +
-      (H.voiceEnabled ? `<a class="btn ghost" href="tel:${esc(H.tel)}">📞 Call</a>` : "");
-    const bc = $("barcall");
-    bc.classList.remove("soon"); bc.href = H.voiceEnabled ? "tel:" + H.tel : "sms:" + H.tel + "?body=31061";
-    bc.textContent = (H.voiceEnabled ? "📞 " : "💬 ") + H.display;
-  })();
-
-  function weekHtml(p, nowMs) {
-    const base = F.dayStart(nowMs);
-    let out = "";
-    for (let i = 0; i < 7; i++) {
-      const dayMs = base + i * F.DAY, w = F.windowsOn(p, dayMs);
-      const name = i === 0 ? "Today" : DOW[(new Date(dayMs).getUTCDay() + 6) % 7];
-      const t = w.length ? F.fmtTime(w[0][0]).replace(":00", "").replace(/[ap]m/, "") + "–" + F.fmtTime(w[0][1]).replace(":00", "") : "·";
-      out += `<div class="day${w.length ? " on" : ""}${i === 0 ? " today" : ""}"><b>${name}</b>${t}</div>`;
-    }
-    return `<div class="week" role="img" aria-label="Next 7 days of hours">${out}</div>`;
-  }
-
-  function render(animate = true) {
-    const now = F.etNow();
-    const rows = F.rank(where, now, P);
-    $("msg").textContent = `Showing pantries near ${label}.`;
-    $("list").innerHTML = rows.map((r, i) => {
-      const p = r.p, open = r.state === "open";
-      const status = open ? `Open now · until ${F.fmt(r.when, now)}`
-        : r.when ? `Closed · opens ${F.fmt(r.when, now)}` : "Check hours";
-      const dir = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
-      return `<article class="card${open ? " is-open" : ""}" style="${animate ? `animation-delay:${i * 70}ms` : "animation:none"}">
-        <div class="top"><h2>${esc(p.name)}</h2>
-          <span class="status${open ? " open" : ""}"><span class="dot"></span>${esc(status)}</span></div>
-        <p class="meta">${esc(p.address)} · ${r.dist.toFixed(1)} mi away</p>
-        ${p.note ? `<span class="note">${esc(p.note)}</span>` : ""}
-        ${weekHtml(p, now)}
-        <div class="actions"><a class="dir" href="${dir}" target="_blank" rel="noopener">🧭 Directions</a>
-          <a class="tel" href="tel:${esc(p.phone.replace(/[^\d+]/g, ""))}">📞 ${esc(p.phone)}</a></div>
-      </article>`;
-    }).join("");
-  }
-
-  function search(text) {
-    const pt = F.locate(text);
-    if (!pt) { $("msg").textContent = "Try a Milledgeville ZIP (31061, 31062, 31059) or a place like GCSU or downtown."; return; }
-    where = pt; label = String(text).trim(); render();
-  }
-
-  $("form").addEventListener("submit", (e) => { e.preventDefault(); search($("q").value); });
-  document.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => { $("q").value = b.dataset.q; search(b.dataset.q); }));
-  $("loc").addEventListener("click", () => {
-    if (!navigator.geolocation) { $("msg").textContent = "Location isn't available here. Try a ZIP code."; return; }
-    $("msg").textContent = "Finding you...";
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { where = [pos.coords.latitude, pos.coords.longitude]; label = "your location"; render(); },
-      () => { $("msg").textContent = "Couldn't get your location. Try a ZIP code."; },
-      { timeout: 8000 });
-  });
-
-  $("dlist").innerHTML = (window.DELIVERY || []).map((d) => {
-    const act = d.phone
-      ? `<a class="call" href="tel:${esc(d.phone.replace(/[^\d+]/g, "").replace(/(\d{10})(\d+)/, "$1,$2"))}">📞 ${esc(d.phone)}</a>`
-      : `<a class="call" href="${esc(d.website)}" target="_blank" rel="noopener">Visit website</a>`;
-    return `<div class="dcard"><h3>${esc(d.name)}</h3><p>${esc(d.who)}</p>${d.hours ? `<small>${esc(d.hours)}</small>` : ""}${act}</div>`;
-  }).join("");
-
-  render();
-  setInterval(() => render(false), 60000);
-})();
-</script>
+<script src="app.js"></script>
 </body>
 </html>

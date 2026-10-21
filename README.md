@@ -19,6 +19,14 @@ When the Twilio number exists, fill in `site/config.js` (display, tel, and `voic
 Tests: `node --test site/finder.test.js` (mirrors the Python tests so site and text line agree).
 Host it free on GitHub Pages, Netlify, or Cloudflare Pages by publishing the `site/` folder.
 
+## Demo script (about 3 minutes, works with no Twilio and with every pantry closed)
+1. **The problem (20s).** Open the site. "Food help is scattered across Facebook pages, directories and phone trees, and the hours are short: Chard Wray is open about 9 hours a week."
+2. **Time machine (40s).** Click "Tue 10am: two open": map pins turn green, cards say Open now. Then "Sat 3pm: all closed" to show it never sends anyone to a locked door. Use the day buttons and slider to scrub the week.
+3. **Map (20s).** Click a pin; the page jumps to its card with hours, directions and a tap-to-call number. Search "GCSU" to move the "You" marker.
+4. **Text line (40s).** In "Try the text line", tap `31061`, then `delivery`. "This is the same code that answers real texts. A test checks the website and the text line give identical answers."
+5. **Phone line (40s).** Press Call, 1, then 31061. Tick "Read aloud" to hear it. With "Demo call forwarding" on, press 1 to be connected to the open pantry (pantries haven't opted in yet, so this is labeled demo).
+6. **Honesty slide (20s).** "Sources disagree on several pantries (see `pantries.json`), so we list only what sources agree on and tell people to call first. Next step is phone confirmation and pantry opt-in."
+
 ## Closures
 Add `"closures": ["2026-11-26"]` (ISO dates) to a pantry in `pantries.json` to skip that day. Run `python3 -m unittest` after editing the code.
 

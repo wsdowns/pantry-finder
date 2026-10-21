@@ -41,7 +41,45 @@ test("fmt", () => {
   const now = at(2026, 10, 21, 10);
   assert.strictEqual(F.fmt(at(2026, 10, 21, 12), now), "today 12:00pm");
   assert.strictEqual(F.fmt(at(2026, 10, 22, 9), now), "tomorrow 9:00am");
-  assert.strictEqual(F.fmt(at(2026, 10, 27, 9, 30), now), "Tue, Oct 27 9:30am");
+  assert.strictEqual(F.fmt(at(2026, 10, 27, 9, 30), now), "Tue Oct 27 9:30am");
+});
+
+// The demo's text line must say exactly what pantry.py says. Runs the real Python for each case.
+const { execFileSync } = require("child_process");
+const ROOT = path.join(__dirname, "..");
+const DELIVERY = JSON.parse(fs.readFileSync(path.join(ROOT, "pantries.json"))).delivery;
+const py = (text, y, m, d, h, mi) => execFileSync("python3", ["-I", "-c",
+  `import sys; sys.path.insert(0, ${JSON.stringify(ROOT)})\nimport pantry\nfrom datetime import datetime\n` +
+  `print(pantry.answer(sys.argv[1], datetime(${y},${m},${d},${h},${mi},tzinfo=pantry.TZ)), end="")`, text]).toString();
+
+test("text line matches pantry.py exactly", () => {
+  const times = [[2026, 10, 21, 10, 0], [2026, 10, 21, 13, 0], [2026, 10, 17, 15, 0], [2026, 10, 15, 8, 30], [2026, 11, 3, 9, 30]];
+  for (const text of ["31061", "31062", "31059", "gcsu", "downtown", "delivery", "I am homebound"]) {
+    for (const t of times) {
+      assert.strictEqual(F.smsAnswer(text, at(...t), P, DELIVERY), py(text, ...t), `${text} @ ${t}`);
+    }
+  }
+});
+
+test("phone line: menu, ZIP, delivery, connect only when open and enabled", () => {
+  const now = at(2026, 10, 21, 10);
+  assert.ok(F.ivr("", "", {}, now, P, DELIVERY).ask.prompt.startsWith("Press 1"));
+  const del = F.ivr("menu", "2", {}, now, P, DELIVERY);
+  assert.ok(del.end && del.say.some((s) => s.includes("4 7 8, 4 5 1, 0 4 4 5")));
+  const zip = F.ivr("zip", "31062", {}, now, P, DELIVERY);
+  assert.ok(zip.say[0].startsWith("Chard Wray") && zip.say[0].includes("open now"));
+  assert.ok(!zip.ask.prompt.includes("connected"));
+  const fwd = P.map((p) => (p === chard ? { ...p, forward: "+14785550123" } : p));
+  const offer = F.ivr("zip", "31062", {}, now, fwd, DELIVERY);
+  assert.ok(offer.ask.prompt.startsWith("Press 1 to be connected to Chard Wray"));
+  assert.strictEqual(F.ivr("pick", "1", offer.ask.ctx, now, fwd, DELIVERY).connected, true);
+  assert.strictEqual(F.ivr("pick", "1", offer.ask.ctx, at(2026, 10, 21, 13), fwd, DELIVERY).connected, false);
+  assert.ok(F.ivr("zip", "90210", {}, now, P, DELIVERY).say[0].includes("only know"));
+});
+
+test("speakPhone", () => {
+  assert.strictEqual(F.speakPhone("(478) 453-4111 ext. 2"), "4 7 8, 4 5 3, 4 1 1 1, extension 2");
+  assert.strictEqual(F.speakPhone("211"), "2 1 1");
 });
 test("locate", () => {
   assert.deepStrictEqual(F.locate("GCSU"), F.PLACES.gcsu);

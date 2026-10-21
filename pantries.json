@@ -1,10 +1,11 @@
 {
-  "_comment": "Weekday: Mon=0. 'nth' = nth weekday of month. Sources: chardwrayfoodpantry.com, foodhelpline.org/locations/milledgeville, findhelp.org (reviewed Oct 15 2026). Verify before relying; lat/lng for First Presbyterian is approximate.",
+  "_comment": "Weekday: Mon=0. 'nth' = nth weekday of month. Sources compared 2026-10-21 (see 'Pantry table.docx'): pantry sites, Middle Georgia Community Food Bank/county guide, Georgia College, Lemontree, WhyHunger, findhelp. Where sources conflict only the overlap is listed (New Beginnings: Thursday). Nothing here is phone-confirmed yet. Chard Wray: own site says 454 Broad St, most other sources 472. MIA: own site and food bank say 453-2221, Lemontree says 696-0112. lat/lng for First Presbyterian is approximate.",
   "pantries": [
     {
       "name": "Chard Wray Food Pantry",
-      "address": "454 Broad St, Milledgeville, GA 31061",
+      "address": "472 Broad St, Milledgeville, GA 31061",
       "phone": "(478) 414-1126",
+      "note": "bring ID in case it's asked",
       "lat": 33.0514566, "lng": -83.2197824,
       "schedule": [
         {"weekday": 1, "start": "09:00", "end": "12:00"},
@@ -16,20 +17,17 @@
       "name": "New Beginnings Outreach Ministries",
       "address": "200 Southside Dr, Milledgeville, GA 31061",
       "phone": "(478) 363-7444",
-      "note": "bring ID with address",
+      "note": "bring ID with address; other days vary by source, call to confirm",
       "lat": 33.0597581, "lng": -83.2083504,
       "schedule": [
-        {"weekday": 0, "start": "12:00", "end": "13:00"},
-        {"weekday": 1, "start": "12:00", "end": "13:00"},
-        {"weekday": 2, "start": "12:00", "end": "13:00"},
-        {"weekday": 3, "start": "12:00", "end": "13:00"},
-        {"weekday": 4, "start": "12:00", "end": "13:00"}
+        {"weekday": 3, "start": "12:00", "end": "13:00"}
       ]
     },
     {
       "name": "First Presbyterian Church Pantry",
       "address": "210 S Wayne St, Milledgeville, GA 31061",
       "phone": "(478) 452-9394",
+      "note": "one visit every 4 weeks",
       "lat": 33.0770, "lng": -83.2330,
       "schedule": [
         {"weekday": 1, "start": "09:30", "end": "10:30"}
@@ -38,8 +36,8 @@
     {
       "name": "MIA - Maddox Investing in America",
       "address": "133 Old River Bridge Rd SE, Milledgeville, GA 31061",
-      "phone": "(478) 696-0112",
-      "note": "3rd Thursday monthly only",
+      "phone": "(478) 453-2221",
+      "note": "3rd Thursday monthly only; phone differs by source",
       "lat": 33.0836512, "lng": -83.210554,
       "schedule": [
         {"weekday": 3, "nth": 3, "start": "08:00", "end": "09:00"}
