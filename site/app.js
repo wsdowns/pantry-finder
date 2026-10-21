@@ -210,7 +210,7 @@
       typing.remove(); addMsg("bot", linkify(reply));
     }, 650);
   }
-  $("smschips").innerHTML = ["31061", "GCSU", "delivery", "I'm homebound"].map((t) => `<button class="chip" type="button">${esc(t)}</button>`).join("");
+  $("smschips").innerHTML = ["31061", "GCSU", "delivery"].map((t) => `<button class="chip" type="button">${esc(t)}</button>`).join("");
   $("smschips").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => sendText(b.textContent)));
   $("smsform").addEventListener("submit", (e) => { e.preventDefault(); sendText($("smsin").value); $("smsin").value = ""; });
   addMsg("bot", "Hi! Text a ZIP code, a place like GCSU, or the word delivery, and I'll find food.");
