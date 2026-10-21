@@ -16,6 +16,9 @@ python3 pantry.py "GCSU"
 `site/` is a static page (no backend). After editing `pantries.json` run `python3 build_site.py` to refresh `site/data.js`.
 Preview: `cd site && python3 -m http.server 8765`, then open http://localhost:8765.
 When the Twilio number exists, fill in `site/config.js` (display, tel, and `voiceEnabled: true` once the voice line is live). Until then the page shows "coming soon".
+The map is Leaflet 1.9.4 (vendored in `site/vendor/leaflet/`, checked against the published SRI hashes) on OpenStreetMap tiles. Pins, distance rings and the route line are drawn by our code. Pins are keyboard-accessible (Enter or Space jumps to the pantry card), one-finger drag is off on touch screens so the page still scrolls, and the zoom buttons are 44px.
+- OpenStreetMap's public tile server is fine for a demo and light use but not for heavy traffic ([usage policy](https://operations.osmfoundation.org/policies/tiles/)). Before a real launch, switch the tile URL in `site/app.js` to a hosted tile provider or your own tiles.
+- Tile requests show visitors' IP addresses to the tile server; the page says so under the map. If the tiles can't load (offline), the pins, rings and distances still work and a note appears.
 Tests: `node --test site/finder.test.js` (mirrors the Python tests so site and text line agree).
 Host it free on GitHub Pages, Netlify, or Cloudflare Pages by publishing the `site/` folder.
 

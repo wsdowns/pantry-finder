@@ -11,7 +11,6 @@
   };
 
   let where = F.PLACES.downtown, label = "downtown Milledgeville";
-  let mapNarrow = window.innerWidth < 560;
   let demo = null;                     // null = live; otherwise a naive-ET ms the time machine chose
   const nowMs = () => (demo ?? F.etNow());
 
@@ -64,55 +63,65 @@
     }).join("");
   }
 
-  // ---------- Map (no tiles, so it works offline and on stage) ----------
+  // ---------- Map (Leaflet + OpenStreetMap; pins, rings and the route line are drawn by us) ----------
+  let map = null, mapLayer = null;
+  const hasLeaflet = typeof L !== "undefined";
+  // Short names keep pin labels from running off small maps; full names stay on the cards and in aria-labels.
+  const shortName = (n) => n.replace(" - Maddox Investing in America", "").replace(" Church Pantry", "").replace(" Food Pantry", "")
+    .replace(" Outreach Ministries", "");
+  function goToCard(idx) {
+    const c = $("card-" + idx);
+    if (!c) return;
+    c.scrollIntoView({ behavior: "smooth", block: "center" });
+    c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash");
+    c.setAttribute("tabindex", "-1"); c.focus({ preventScroll: true }); // keyboard and screen-reader users land on the card
+  }
+  function ensureMap() {
+    if (map || !hasLeaflet) return;
+    // One-finger drag is off on touch screens so the page still scrolls past the map; pinch and the +/- buttons zoom.
+    map = L.map("map", { scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: false, zoomSnap: 0.5 }).setView(where, 13);
+    const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors' }).addTo(map);
+    tiles.on("tileerror", () => { $("mapnote").hidden = false; });
+    tiles.on("tileload", () => { $("mapnote").hidden = true; });
+    mapLayer = L.layerGroup().addTo(map);
+    map.on("moveend zoomend", placeLabels);
+  }
   function renderMap(rows) {
-    // Phone-sized screens get a taller, narrower drawing so labels stay at a readable size.
-    const narrow = window.innerWidth < 560, W = narrow ? 340 : 640, Ht = narrow ? 460 : 380, pad = narrow ? 74 : 64;
-    mapNarrow = narrow;
-    $("map").setAttribute("viewBox", `0 0 ${W} ${Ht}`);
-    $("map").classList.toggle("narrow", narrow);
-    const pts = [where, ...P.map((p) => [p.lat, p.lng])];
-    const lat0 = pts.reduce((s, p) => s + p[0], 0) / pts.length, kx = Math.cos((lat0 * Math.PI) / 180);
-    const xs = pts.map((p) => p[1] * kx), ys = pts.map((p) => -p[0]);
-    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    const sc = Math.min((W - 2 * pad) / Math.max(maxX - minX, 1e-6), (Ht - 2 * pad) / Math.max(maxY - minY, 1e-6));
-    const ox = (W - (maxX - minX) * sc) / 2, oy = (Ht - (maxY - minY) * sc) / 2;
-    const X = (p) => ox + (p[1] * kx - minX) * sc, Y = (p) => oy + (-p[0] - minY) * sc;
-    const stateOf = new Map(rows.map((r) => [r.p, r]));
-    let g = "";
-    for (let x = 0; x <= W; x += 64) g += `<line class="grid" x1="${x}" y1="0" x2="${x}" y2="${Ht}"/>`;
-    for (let y = 0; y <= Ht; y += 64) g += `<line class="grid" x1="0" y1="${y}" x2="${W}" y2="${y}"/>`;
-    const ux = X(where), uy = Y(where);
+    if (!hasLeaflet) { $("map").textContent = "The map couldn't load. Every pantry is listed below."; return; }
+    ensureMap(); mapLayer.clearLayers();
     for (const mi of [1, 2, 3]) {
-      const r = (mi / 69) * sc;
-      g += `<circle class="ring" cx="${ux}" cy="${uy}" r="${r}"/><text class="ringlbl" x="${ux + r * 0.71 + 3}" y="${uy - r * 0.71 - 3}">${mi} mi</text>`;
+      L.circle(where, { radius: mi * 1609.34, className: "ring", weight: 1.5, dashArray: "5 6", opacity: 0.6, fill: false, interactive: false }).addTo(mapLayer);
     }
-    const best = rows[0];
-    if (best) g += `<line class="path" x1="${ux}" y1="${uy}" x2="${X([best.p.lat, best.p.lng])}" y2="${Y([best.p.lat, best.p.lng])}"/>`;
+    if (rows[0]) L.polyline([where, [rows[0].p.lat, rows[0].p.lng]], { className: "route", weight: 3, dashArray: "2 8", opacity: 0.9, interactive: false }).addTo(mapLayer);
     for (const r of rows) {
-      const p = r.p, cx = X([p.lat, p.lng]), cy = Y([p.lat, p.lng]), open = r.state === "open";
-      // A pin near "You" puts its label on the side away from you, so the two labels never collide.
-      const up = Math.hypot(cx - ux, cy - uy) < 70 ? cy < uy : cy > Ht / 2;
-      const nm = p.name.replace(" - Maddox Investing in America", "").replace(" Church Pantry", " Pantry").replace(" Ministries", "");
-      const anchor = cx < 130 ? "start" : cx > W - 130 ? "end" : "middle", lx = anchor === "start" ? cx - 12 : anchor === "end" ? cx + 12 : cx;
-      const y1 = cy + (up ? -32 : 28), y2 = cy + (up ? -18 : 42);
-      g += `<g class="pin ${open ? "open" : "closed"}" data-i="${P.indexOf(p)}" tabindex="0" role="button" aria-label="${esc(p.name)}, ${open ? "open now" : "closed"}. Show details.">` +
-        (open ? `<circle class="halo" cx="${cx}" cy="${cy}" r="11"/>` : "") +
-        `<circle class="dot" cx="${cx}" cy="${cy}" r="11"/>` +
-        `<text class="lbl" x="${lx}" y="${y1}" text-anchor="${anchor}">${esc(nm)}</text>` +
-        `<text class="lbl sub ${open ? "open" : "closed"}" x="${lx}" y="${y2}" text-anchor="${anchor}">${open ? "Open now" : "Closed"}</text></g>`;
+      const p = r.p, open = r.state === "open", idx = P.indexOf(p), name = `${p.name}, ${open ? "open now" : "closed"}. Show details.`;
+      const icon = L.divIcon({ className: "", iconSize: [22, 22], iconAnchor: [11, 11],
+        html: `<div class="pinwrap ${open ? "open" : "closed"}"><span class="pdot"></span><span class="plabel"><b>${esc(shortName(p.name))}</b><i>${open ? "Open now" : "Closed"}</i></span></div>` });
+      const m = L.marker([p.lat, p.lng], { icon, title: name, keyboard: true, zIndexOffset: open ? 500 : 0 }).on("click", () => goToCard(idx)).addTo(mapLayer);
+      const el = m.getElement();
+      el.setAttribute("aria-label", name);
+      // Leaflet doesn't turn Enter into a click for custom pins, so keyboard users get it from us.
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToCard(idx); } });
     }
-    g += `<circle class="you" cx="${ux}" cy="${uy}" r="8"/><text class="youlbl" x="${ux}" y="${uy - 15}" text-anchor="middle">You</text>`;
-    $("map").innerHTML = g;
-    $("map").querySelectorAll(".pin").forEach((pin) => {
-      const go = () => {
-        const c = $("card-" + pin.dataset.i);
-        if (!c) return;
-        c.scrollIntoView({ behavior: "smooth", block: "center" });
-        c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash");
-      };
-      pin.addEventListener("click", go);
-      pin.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+    L.marker(where, { icon: L.divIcon({ className: "", iconSize: [18, 18], iconAnchor: [9, 9],
+      html: '<div class="ymark"><span class="ydot"></span><span class="ylabel">You</span></div>' }), interactive: false, keyboard: false, zIndexOffset: 1000 }).addTo(mapLayer);
+    map.invalidateSize();
+    map.fitBounds(L.latLngBounds([where, ...P.map((p) => [p.lat, p.lng])]).pad(0.3), { animate: false, maxZoom: 15 });
+    placeLabels();
+  }
+  // Pins in the right part of the map get their label on the left, so labels never run off the edge.
+  function placeLabels() {
+    if (!map) return;
+    const w = map.getSize().x;
+    const left = $("map").getBoundingClientRect().left;
+    document.querySelectorAll("#map .pinwrap").forEach((pw) => {
+      const label = pw.querySelector(".plabel");
+      label.style.whiteSpace = ""; label.style.maxWidth = "";            // measure at natural width
+      const px = pw.closest(".leaflet-marker-icon").getBoundingClientRect().left - left, lw = label.offsetWidth;
+      const fitsRight = px + 28 + lw <= w - 6, fitsLeft = px - 6 - lw >= 6;
+      pw.classList.toggle("left", !fitsRight && fitsLeft);
+      if (!fitsRight && !fitsLeft) { label.style.whiteSpace = "normal"; label.style.maxWidth = Math.max(110, w - px - 34) + "px"; } // wrap, don't clip
     });
   }
 
@@ -295,7 +304,6 @@
   $("callstop").addEventListener("click", () => hangup(true));
 
   // ---------- Go ----------
-  window.addEventListener("resize", () => { if ((window.innerWidth < 560) !== mapNarrow) update(false); });
   buildDays();
   const n0 = F.etNow(); selMin = Math.floor((n0 - F.dayStart(n0)) / 60000);
   update(true);

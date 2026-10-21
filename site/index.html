@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Milledgeville Food Assistance Programs</title>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="description" content="Find a free food pantry open near you in Milledgeville, Georgia. Text or call for help.">
@@ -148,24 +149,35 @@
 
   /* map */
   .mapwrap { margin: 16px 0 0; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 10px; box-shadow: var(--shadow); }
-  #map { width: 100%; height: auto; display: block; border-radius: 14px; background: var(--bg2); }
-  #map .grid { stroke: var(--line); stroke-width: 1; opacity: .55; }
-  #map .ring { fill: none; stroke: var(--accent); stroke-width: 1.4; stroke-dasharray: 5 6; opacity: .45; }
-  #map .ringlbl { fill: var(--muted); font-size: 11px; font-weight: 800; }
-  #map .path { stroke: var(--accent); stroke-width: 2.4; stroke-dasharray: 2 7; stroke-linecap: round; opacity: .8; }
-  #map .pin { cursor: pointer; outline: none; }
-  #map .pin circle.dot { stroke: var(--card); stroke-width: 3; }
-  #map .pin.open circle.dot { fill: var(--open); }
-  #map .pin.closed circle.dot { fill: #c79a2a; }
-  #map .pin .halo { fill: var(--open); opacity: .35; transform-box: fill-box; transform-origin: center; animation: halo 1.8s ease-out infinite; }
-  #map .pin:focus-visible circle.dot, #map .pin:hover circle.dot { stroke: var(--ink); }
-  #map .lbl { fill: var(--ink); font-size: 12.5px; font-weight: 800; paint-order: stroke; stroke: var(--bg2); stroke-width: 4px; stroke-linejoin: round; }
-  #map .you { fill: #003366; stroke: #fff; stroke-width: 3; }
-  #map .youlbl { fill: var(--ink); font-size: 12px; font-weight: 800; paint-order: stroke; stroke: var(--bg2); stroke-width: 4px; }
+  #map { position: relative; z-index: 0; isolation: isolate; height: 430px; border-radius: 14px; background: var(--bg2); overflow: hidden; }
+  @media (max-width: 560px) { #map { height: 380px; } }
+  #map.leaflet-container { font: inherit; }
+  .pinwrap { position: relative; width: 22px; height: 22px; }
+  .pinwrap .pdot { position: absolute; inset: 0; border-radius: 50%; box-sizing: border-box; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+  .pinwrap.open .pdot { background: #00642f; }
+  .pinwrap.open .pdot::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; background: #00642f; opacity: .35; z-index: -1; animation: halo 1.8s ease-out infinite; }
+  /* Closed pins are hollow, open pins are filled, so state never depends on color alone. */
+  .pinwrap.closed .pdot { background: #fff; border: 5px solid #c79a2a; }
+  .plabel { position: absolute; left: 28px; top: 0; white-space: nowrap; display: grid; line-height: 1.15; padding: 3px 8px; border-radius: 9px;
+    background: rgba(255,255,255,.95); color: #14231a; font-weight: 800; font-size: 12.5px; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  .pinwrap.left .plabel { left: auto; right: 28px; }
+  .plabel i { font-style: normal; font-size: 11.5px; }
+  .leaflet-control-attribution { font-size: 11px; }
+  #map path.ring, #map path.route { stroke: #005028; }
+  @media (prefers-color-scheme: dark) { #map path.ring, #map path.route { stroke: #b3d1a9; } }
+  .pinwrap.open .plabel i { color: #00642f; } .pinwrap.closed .plabel i { color: #7a5c12; }
+  .ymark { position: relative; width: 18px; height: 18px; }
+  .ymark .ydot { position: absolute; inset: 0; border-radius: 50%; background: #003366; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); box-sizing: border-box; }
+  .ymark .ylabel { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); background: #003366; color: #fff; font-weight: 800; font-size: 12px; padding: 1px 8px; border-radius: 9px; }
+  /* OpenStreetMap tiles are light; in dark mode, dim and invert them so the map doesn't glare. */
+  @media (prefers-color-scheme: dark) { #map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); } }
+  .leaflet-control-zoom a { min-width: 44px; min-height: 44px; line-height: 44px !important; }
+  .leaflet-container a { color: #00507a; }
   .legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 10px 8px 2px; color: var(--muted); font-size: .85rem; font-weight: 700; }
   .lg { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
   .lg.open { background: var(--open); } .lg.closed { background: #c79a2a; } .lg.you { background: #003366; }
   .card.flash { animation: flash 1.2s ease; }
+  .card:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   /* try it: phone simulators */
   .try { margin: 36px 0 6px; padding: 24px 20px; border-radius: 24px; background: linear-gradient(160deg, #005028, #003319); color: #fff; box-shadow: var(--shadow); scroll-margin-top: 70px; }
@@ -213,17 +225,9 @@
   .herologo { display: none; background: #f2f3ee; border-radius: 26px; padding: 14px; width: 100%; max-width: 230px; height: auto; justify-self: center; box-shadow: var(--shadow); }
   @media (min-width: 760px) { .herogrid { grid-template-columns: 1fr 240px; gap: 36px; } .herologo { display: block; } }
   .footlogo { display: block; background: #f2f3ee; border-radius: 22px; padding: 10px; width: 140px; height: auto; margin: 0 0 14px; }
-  summary:focus-visible, #map .pin:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-  #map .pin:focus-visible circle.dot { stroke: var(--ink); stroke-width: 4px; }
+  summary:focus-visible, .leaflet-marker-icon:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 50%; }
   a, button, summary, input { touch-action: manipulation; }
-  /* Closed pins are hollow, open pins are filled, so state never depends on color alone. */
-  #map .pin.closed circle.dot { fill: var(--card); stroke: #c79a2a; stroke-width: 5px; }
-  #map .sub { font-size: 11.5px; font-weight: 800; }
-  #map .sub.open { fill: var(--open); } #map .sub.closed { fill: var(--closed); }
   .lg.closed { background: var(--card); border: 3px solid #c79a2a; box-sizing: border-box; }
-  /* Narrow screens draw the map in a smaller coordinate space, so labels use bigger units to stay readable. */
-  #map.narrow .lbl { font-size: 15.5px; } #map.narrow .sub { font-size: 14px; }
-  #map.narrow .youlbl { font-size: 15px; } #map.narrow .ringlbl { font-size: 13px; }
 
   /* GCSU type: Oswald headings, Mulish body */
   h1, h2, h3, .brand, .hotline .num { font-family: "Oswald", "Arial Narrow", Arial, sans-serif; }
@@ -299,8 +303,10 @@
     </details>
 
     <div class="mapwrap">
-      <svg id="map" viewBox="0 0 640 380" role="group" aria-label="Map of nearby pantries. Each pin is a button that jumps to that pantry's details below."></svg>
-      <div class="legend"><span><i class="lg open"></i> Open now</span><span><i class="lg closed"></i> Closed</span><span><i class="lg you"></i> You</span></div>
+      <div id="map" role="region" aria-label="Map of nearby pantries. Each pin is a button that jumps to that pantry's details below."></div>
+      <p id="mapnote" class="privacy" role="status" hidden>The map pictures couldn't load (are you offline?). The pins, rings and distances are still correct, and everything is listed below.</p>
+      <div class="legend"><span><i class="lg open"></i> Open now</span><span><i class="lg closed"></i> Closed</span><span><i class="lg you"></i> You</span><span>Dashed rings: 1, 2 and 3 miles</span></div>
+      <p class="privacy">Map data © OpenStreetMap contributors. The map pictures load from OpenStreetMap, which can see your device's IP address and the area you view.</p>
     </div>
 
     <div id="list" class="list"></div>
@@ -354,6 +360,7 @@
 <script src="config.js"></script>
 <script src="data.js"></script>
 <script src="finder.js"></script>
+<script src="vendor/leaflet/leaflet.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
