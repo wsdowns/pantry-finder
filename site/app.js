@@ -93,7 +93,8 @@
     for (const mi of [1, 2, 3]) {
       L.circle(where, { radius: mi * 1609.34, className: "ring", weight: 1.5, dashArray: "5 6", opacity: 0.6, fill: false, interactive: false }).addTo(mapLayer);
     }
-    if (rows[0]) L.polyline([where, [rows[0].p.lat, rows[0].p.lng]], { className: "route", weight: 3, dashArray: "2 8", opacity: 0.9, interactive: false }).addTo(mapLayer);
+    // Straight line to the nearest pantry that is open now (the list is open-first, nearest-first). Nothing open, no line.
+    if (rows[0] && rows[0].state === "open") L.polyline([where, [rows[0].p.lat, rows[0].p.lng]], { className: "route", weight: 3, dashArray: "2 8", opacity: 0.9, interactive: false }).addTo(mapLayer);
     for (const r of rows) {
       const p = r.p, open = r.state === "open", idx = P.indexOf(p), name = `${p.name}, ${open ? "open now" : "closed"}. Show details.`;
       const icon = L.divIcon({ className: "", iconSize: [22, 22], iconAnchor: [11, 11],
