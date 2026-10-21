@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Milledgeville Food Pantries</title>
+<meta name="description" content="Find a free food pantry open near you in Milledgeville, Georgia. Text or call for help.">
+<style>
+  :root {
+    --bg: #fbf6ee; --bg2: #f3e9d8; --card: #ffffff; --ink: #2a1f14; --muted: #6f6253;
+    --line: #e6d9c3; --accent: #d9480f; --accent-ink: #ffffff; --open: #12805c; --open-bg: #dcf5ea;
+    --closed: #8a6d3b; --closed-bg: #f5ead2; --glow: rgba(217,72,15,.35); --shadow: 0 10px 30px rgba(80,50,10,.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17110b; --bg2: #21170e; --card: #261b11; --ink: #fbf1e1; --muted: #bba98f;
+      --line: #3b2b1b; --accent: #ff7a3d; --accent-ink: #1a0e05; --open: #4ee0a8; --open-bg: #12382b;
+      --closed: #e6c27a; --closed-bg: #3a2c14; --glow: rgba(255,122,61,.45); --shadow: 0 12px 34px rgba(0,0,0,.45);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; color: var(--ink); line-height: 1.5;
+    font: 17px/1.5 ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background:
+      radial-gradient(900px 500px at 85% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+      radial-gradient(700px 480px at -10% 10%, color-mix(in srgb, var(--open) 14%, transparent), transparent 60%),
+      var(--bg);
+    min-height: 100vh;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 16px; }
+
+  /* top bar */
+  .bar { position: sticky; top: 0; z-index: 5; backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--line); }
+  .bar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 10px; }
+  .brand { font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+  .brand i { font-style: normal; font-size: 1.3em; }
+  .barcall { font-weight: 800; text-decoration: none; background: var(--accent); color: var(--accent-ink);
+    padding: 8px 14px; border-radius: 999px; white-space: nowrap; box-shadow: 0 0 0 0 var(--glow); animation: ring 2.6s infinite; }
+  .barcall.soon { background: var(--bg2); color: var(--muted); animation: none; box-shadow: none; border: 1px dashed var(--line); font-weight: 600; }
+
+  /* hero */
+  .hero { padding: 40px 0 24px; }
+  h1 { font-size: clamp(2.1rem, 7vw, 3.6rem); line-height: 1.04; letter-spacing: -.035em; margin: 0 0 12px; font-weight: 900; }
+  h1 em { font-style: normal; color: var(--accent); }
+  .lead { font-size: 1.15rem; color: var(--muted); max-width: 40ch; margin: 0 0 22px; }
+
+  .hotline {
+    position: relative; overflow: hidden; border-radius: 26px; padding: 24px 22px; margin: 6px 0 22px;
+    color: var(--accent-ink); background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #ffb36b));
+    box-shadow: 0 18px 40px -12px var(--glow);
+  }
+  .hotline::after { content: ""; position: absolute; inset: auto -40px -60px auto; width: 220px; height: 220px; border-radius: 50%;
+    background: rgba(255,255,255,.16); }
+  .hotline small { display: block; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; opacity: .85; font-size: .78rem; }
+  .hotline .num { display: block; font-size: clamp(2rem, 9vw, 3.4rem); font-weight: 900; letter-spacing: -.02em; line-height: 1.1; margin: 6px 0 4px; color: inherit; text-decoration: none; }
+  .hotline p { margin: 0 0 14px; max-width: 42ch; font-weight: 600; opacity: .95; }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; position: relative; z-index: 1; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; font: inherit; font-weight: 800; border: 0; cursor: pointer;
+    padding: 13px 20px; border-radius: 14px; text-decoration: none; background: #fff; color: #7a2300; min-height: 48px; }
+  .btn.ghost { background: rgba(255,255,255,.22); color: inherit; }
+  .btn:active { transform: translateY(1px); }
+  .hotline.soon { background: var(--card); color: var(--ink); border: 2px dashed var(--line); box-shadow: none; }
+  .hotline.soon::after { display: none; }
+  .hotline.soon .num { font-size: 1.7rem; }
+
+  /* search */
+  form.find { display: grid; grid-template-columns: 1fr auto; gap: 10px; background: var(--card); padding: 10px; border-radius: 20px;
+    border: 1px solid var(--line); box-shadow: var(--shadow); }
+  form.find input { font: inherit; padding: 14px 14px; border-radius: 12px; border: 1px solid transparent; background: var(--bg2); color: var(--ink); min-width: 0; }
+  form.find input:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  form.find .go { background: var(--ink); color: var(--bg); font: inherit; font-weight: 800; border: 0; border-radius: 12px; padding: 0 22px; cursor: pointer; min-height: 48px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
+  .chip { font: inherit; font-size: .92rem; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--card); color: var(--ink); cursor: pointer; }
+  .chip:hover { border-color: var(--accent); }
+  #msg { min-height: 1.4em; margin: 12px 4px 0; color: var(--muted); font-weight: 600; }
+
+  /* cards */
+  .list { display: grid; gap: 16px; margin: 18px 0 8px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 20px; box-shadow: var(--shadow);
+    animation: rise .5s both; }
+  .card.is-open { border-color: var(--open); box-shadow: 0 0 0 3px color-mix(in srgb, var(--open) 22%, transparent), var(--shadow); }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .card h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.01em; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: .95rem; padding: 6px 12px; border-radius: 999px;
+    background: var(--closed-bg); color: var(--closed); }
+  .status.open { background: var(--open-bg); color: var(--open); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+  .open .dot { animation: pulse 1.6s infinite; }
+  .meta { margin: 10px 0 0; color: var(--muted); font-weight: 600; }
+  .meta a { text-decoration: none; border-bottom: 1px dotted currentColor; }
+  .note { display: inline-block; margin-top: 10px; font-size: .92rem; font-weight: 700; background: var(--bg2); border-radius: 10px; padding: 4px 10px; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .actions a { text-decoration: none; font-weight: 800; padding: 11px 16px; border-radius: 12px; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; }
+  .actions .dir { background: var(--accent); color: var(--accent-ink); }
+  .actions .tel { background: var(--bg2); }
+
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 16px; }
+  .day { border-radius: 10px; padding: 6px 2px; text-align: center; background: var(--bg2); color: var(--muted); font-size: .72rem; font-weight: 700; line-height: 1.25; min-height: 52px; }
+  .day b { display: block; font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; }
+  .day.on { background: color-mix(in srgb, var(--accent) 16%, var(--card)); color: var(--ink); }
+  .day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* delivery */
+  .deliv { margin: 36px 0 6px; padding: 24px 20px; border-radius: 24px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); scroll-margin-top: 70px; }
+  .deliv h2 { margin: 0 0 8px; font-size: clamp(1.4rem, 5vw, 1.9rem); letter-spacing: -.02em; }
+  .dlead { margin: 0 0 16px; color: var(--muted); max-width: 62ch; }
+  .dlead a { color: var(--accent); }
+  .dgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+  .dcard { background: var(--bg2); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+  .dcard h3 { margin: 0; font-size: 1.02rem; }
+  .dcard p { margin: 0; color: var(--muted); font-size: .94rem; }
+  .dcard small { color: var(--muted); font-weight: 700; }
+  .dcard a.call { margin-top: auto; align-self: flex-start; text-decoration: none; font-weight: 800; padding: 10px 14px; border-radius: 12px; background: var(--accent); color: var(--accent-ink); min-height: 44px; display: inline-flex; align-items: center; }
+
+  /* info */
+  .info { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin: 34px 0 10px; }
+  .info div { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; }
+  .info h3 { margin: 0 0 4px; font-size: 1rem; }
+  .info p { margin: 0; color: var(--muted); font-size: .95rem; }
+  footer { margin: 30px 0 60px; color: var(--muted); font-size: .9rem; }
+  footer p { margin: 0 0 8px; max-width: 70ch; }
+
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; } 70% { box-shadow: 0 0 0 9px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+  @keyframes ring { 0%, 100% { box-shadow: 0 0 0 0 var(--glow); } 50% { box-shadow: 0 0 0 10px transparent; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  @media (max-width: 460px) { .hero { padding-top: 26px; } .card { padding: 16px; } .day { font-size: .66rem; } }
+</style>
+</head>
+<body>
+<header class="bar"><div class="wrap">
+  <span class="brand"><i>🍞</i> Milledgeville Food Help</span>
+  <a id="barcall" class="barcall soon" href="#help">Text line coming soon</a>
+</div></header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>Hungry? Find food <em>open near you</em> today.</h1>
+    <p class="lead">Free pantries in Milledgeville and Baldwin County, with live open and closed times.</p>
+
+    <section id="help" class="hotline soon" aria-label="Text or call for help">
+      <small id="hl-kicker">Help by phone</small>
+      <a id="hl-num" class="num" href="#">Number coming soon</a>
+      <p id="hl-text">Soon you can text your ZIP code to a number and get the nearest open pantry back. No app, no internet needed.</p>
+      <div class="btns" id="hl-btns"></div>
+    </section>
+
+    <form class="find" id="form" role="search">
+      <input id="q" name="q" type="text" inputmode="text" autocomplete="postal-code" placeholder="ZIP code or place (31061, GCSU)" aria-label="ZIP code or place">
+      <button class="go" type="submit">Find food</button>
+    </form>
+    <div class="chips">
+      <button class="chip" type="button" id="loc">📍 Use my location</button>
+      <button class="chip" type="button" data-q="31061">31061</button>
+      <button class="chip" type="button" data-q="31062">31062</button>
+      <button class="chip" type="button" data-q="GCSU">GCSU</button>
+      <button class="chip" type="button" data-q="downtown">Downtown</button>
+      <a class="chip" href="#delivery">🚪 Can't get out? Get food delivered</a>
+    </div>
+    <p id="msg" role="status" aria-live="polite"></p>
+    <div id="list" class="list" aria-live="polite"></div>
+  </section>
+
+  <section id="delivery" class="deliv" aria-labelledby="dh">
+    <h2 id="dh">Can't get out? Food can come to you.</h2>
+    <p class="dlead">Most delivery in Baldwin County is for <strong>seniors (60+)</strong> and people who are <strong>homebound</strong>. Not a senior? Call <a href="tel:211"><strong>2-1-1</strong></a> and ask about free food delivery or someone who can pick up for you. Call to confirm who qualifies.</p>
+    <div id="dlist" class="dgrid"></div>
+  </section>
+
+  <section class="info" aria-label="Good to know">
+    <div><h3>Call first</h3><p>Hours can change for holidays and volunteers. A quick call saves a trip.</p></div>
+    <div><h3>Bring ID if asked</h3><p>Some pantries ask for ID with your address. Any special requirement shows on the card.</p></div>
+    <div><h3>It's okay to ask</h3><p>Pantries exist for neighbors who need a hand, for a week or for a while.</p></div>
+  </section>
+
+  <footer>
+    <p>Hours come from each pantry's public listings (reviewed October 2026) and may be out of date. Distances are approximate straight-line miles.</p>
+    <p>Run a pantry, or see wrong hours? Please tell us so we can fix it.</p>
+  </footer>
+</main>
+
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="finder.js"></script>
+<script>
+(() => {
+  const F = window.Finder, P = window.PANTRIES, H = window.HOTLINE || {};
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  let where = F.PLACES.downtown, label = "downtown Milledgeville";
+
+  // Phone hero: show text number once configured; Call button only when the voice line is live.
+  (function hotline() {
+    if (!H.display || !H.tel) return;
+    const box = $("help"), num = $("hl-num"), btns = $("hl-btns");
+    box.classList.remove("soon");
+    $("hl-kicker").textContent = H.voiceEnabled ? "Text or call for help" : "Text for help";
+    num.textContent = H.display; num.href = "tel:" + H.tel;
+    $("hl-text").textContent = H.voiceEnabled
+      ? "Text your ZIP code and we text back the nearest open pantry. Prefer to talk? Call and press your ZIP on the keypad."
+      : "Text your ZIP code and we text back the nearest open pantry. No app or internet needed.";
+    btns.innerHTML = `<a class="btn" href="sms:${esc(H.tel)}?body=31061">💬 Text us</a>` +
+      (H.voiceEnabled ? `<a class="btn ghost" href="tel:${esc(H.tel)}">📞 Call</a>` : "");
+    const bc = $("barcall");
+    bc.classList.remove("soon"); bc.href = H.voiceEnabled ? "tel:" + H.tel : "sms:" + H.tel + "?body=31061";
+    bc.textContent = (H.voiceEnabled ? "📞 " : "💬 ") + H.display;
+  })();
+
+  function weekHtml(p, nowMs) {
+    const base = F.dayStart(nowMs);
+    let out = "";
+    for (let i = 0; i < 7; i++) {
+      const dayMs = base + i * F.DAY, w = F.windowsOn(p, dayMs);
+      const name = i === 0 ? "Today" : DOW[(new Date(dayMs).getUTCDay() + 6) % 7];
+      const t = w.length ? F.fmtTime(w[0][0]).replace(":00", "").replace(/[ap]m/, "") + "–" + F.fmtTime(w[0][1]).replace(":00", "") : "·";
+      out += `<div class="day${w.length ? " on" : ""}${i === 0 ? " today" : ""}"><b>${name}</b>${t}</div>`;
+    }
+    return `<div class="week" role="img" aria-label="Next 7 days of hours">${out}</div>`;
+  }
+
+  function render(animate = true) {
+    const now = F.etNow();
+    const rows = F.rank(where, now, P);
+    $("msg").textContent = `Showing pantries near ${label}.`;
+    $("list").innerHTML = rows.map((r, i) => {
+      const p = r.p, open = r.state === "open";
+      const status = open ? `Open now · until ${F.fmt(r.when, now)}`
+        : r.when ? `Closed · opens ${F.fmt(r.when, now)}` : "Check hours";
+      const dir = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
+      return `<article class="card${open ? " is-open" : ""}" style="${animate ? `animation-delay:${i * 70}ms` : "animation:none"}">
+        <div class="top"><h2>${esc(p.name)}</h2>
+          <span class="status${open ? " open" : ""}"><span class="dot"></span>${esc(status)}</span></div>
+        <p class="meta">${esc(p.address)} · ${r.dist.toFixed(1)} mi away</p>
+        ${p.note ? `<span class="note">${esc(p.note)}</span>` : ""}
+        ${weekHtml(p, now)}
+        <div class="actions"><a class="dir" href="${dir}" target="_blank" rel="noopener">🧭 Directions</a>
+          <a class="tel" href="tel:${esc(p.phone.replace(/[^\d+]/g, ""))}">📞 ${esc(p.phone)}</a></div>
+      </article>`;
+    }).join("");
+  }
+
+  function search(text) {
+    const pt = F.locate(text);
+    if (!pt) { $("msg").textContent = "Try a Milledgeville ZIP (31061, 31062, 31059) or a place like GCSU or downtown."; return; }
+    where = pt; label = String(text).trim(); render();
+  }
+
+  $("form").addEventListener("submit", (e) => { e.preventDefault(); search($("q").value); });
+  document.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => { $("q").value = b.dataset.q; search(b.dataset.q); }));
+  $("loc").addEventListener("click", () => {
+    if (!navigator.geolocation) { $("msg").textContent = "Location isn't available here. Try a ZIP code."; return; }
+    $("msg").textContent = "Finding you...";
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { where = [pos.coords.latitude, pos.coords.longitude]; label = "your location"; render(); },
+      () => { $("msg").textContent = "Couldn't get your location. Try a ZIP code."; },
+      { timeout: 8000 });
+  });
+
+  $("dlist").innerHTML = (window.DELIVERY || []).map((d) => {
+    const act = d.phone
+      ? `<a class="call" href="tel:${esc(d.phone.replace(/[^\d+]/g, "").replace(/(\d{10})(\d+)/, "$1,$2"))}">📞 ${esc(d.phone)}</a>`
+      : `<a class="call" href="${esc(d.website)}" target="_blank" rel="noopener">Visit website</a>`;
+    return `<div class="dcard"><h3>${esc(d.name)}</h3><p>${esc(d.who)}</p>${d.hours ? `<small>${esc(d.hours)}</small>` : ""}${act}</div>`;
+  }).join("");
+
+  render();
+  setInterval(() => render(false), 60000);
+})();
+</script>
+</body>
+</html>
