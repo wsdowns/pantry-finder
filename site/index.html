@@ -5,27 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Milledgeville Food Pantries</title>
 <meta name="description" content="Find a free food pantry open near you in Milledgeville, Georgia. Text or call for help.">
+<meta name="theme-color" content="#005028">
 <style>
+  @font-face { font-family: "Mulish"; src: url("fonts/mulish-latin.woff2") format("woff2"); font-weight: 400 900; font-display: swap; }
+  @font-face { font-family: "Oswald"; src: url("fonts/oswald-latin.woff2") format("woff2"); font-weight: 500 700; font-display: swap; }
+  /* Palette from gcsu.edu: green #005028, dark green #003319, sage #b3d1a9, navy #003366. */
   :root {
-    --bg: #fbf6ee; --bg2: #f3e9d8; --card: #ffffff; --ink: #2a1f14; --muted: #6f6253;
-    --line: #e6d9c3; --accent: #d9480f; --accent-ink: #ffffff; --open: #12805c; --open-bg: #dcf5ea;
-    --closed: #8a6d3b; --closed-bg: #f5ead2; --glow: rgba(217,72,15,.35); --shadow: 0 10px 30px rgba(80,50,10,.10);
+    --bg: #f4f7f2; --bg2: #e6efe2; --card: #ffffff; --ink: #14231a; --muted: #4d5f54;
+    --line: #cfdcc9; --accent: #005028; --accent-ink: #ffffff; --open: #00642f; --open-bg: #d6efdc;
+    --closed: #7a5c12; --closed-bg: #f3ead0; --glow: rgba(0,80,40,.35); --shadow: 0 10px 30px rgba(0,51,25,.10);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #17110b; --bg2: #21170e; --card: #261b11; --ink: #fbf1e1; --muted: #bba98f;
-      --line: #3b2b1b; --accent: #ff7a3d; --accent-ink: #1a0e05; --open: #4ee0a8; --open-bg: #12382b;
-      --closed: #e6c27a; --closed-bg: #3a2c14; --glow: rgba(255,122,61,.45); --shadow: 0 12px 34px rgba(0,0,0,.45);
+      --bg: #08150e; --bg2: #0f2418; --card: #12291c; --ink: #eef5ec; --muted: #a9bdb0;
+      --line: #24402f; --accent: #b3d1a9; --accent-ink: #00220f; --open: #86e3a6; --open-bg: #0f3a23;
+      --closed: #e6c27a; --closed-bg: #3a2e12; --glow: rgba(179,209,169,.35); --shadow: 0 12px 34px rgba(0,0,0,.45);
     }
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0; color: var(--ink); line-height: 1.5;
-    font: 17px/1.5 ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 17px/1.5 "Mulish", "Muli", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     background:
-      radial-gradient(900px 500px at 85% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
-      radial-gradient(700px 480px at -10% 10%, color-mix(in srgb, var(--open) 14%, transparent), transparent 60%),
+      radial-gradient(900px 500px at 85% -10%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 60%),
+      radial-gradient(700px 480px at -10% 10%, color-mix(in srgb, #003366 12%, transparent), transparent 60%),
       var(--bg);
     min-height: 100vh;
   }
@@ -50,18 +54,18 @@
 
   .hotline {
     position: relative; overflow: hidden; border-radius: 26px; padding: 24px 22px; margin: 6px 0 22px;
-    color: var(--accent-ink); background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #ffb36b));
+    color: #fff; background: linear-gradient(135deg, #005028, #003319);
     box-shadow: 0 18px 40px -12px var(--glow);
   }
   .hotline::after { content: ""; position: absolute; inset: auto -40px -60px auto; width: 220px; height: 220px; border-radius: 50%;
-    background: rgba(255,255,255,.16); }
+    background: rgba(179,209,169,.14); }
   .hotline small { display: block; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; opacity: .85; font-size: .78rem; }
   .hotline .num { display: block; font-size: clamp(2rem, 9vw, 3.4rem); font-weight: 900; letter-spacing: -.02em; line-height: 1.1; margin: 6px 0 4px; color: inherit; text-decoration: none; }
   .hotline p { margin: 0 0 14px; max-width: 42ch; font-weight: 600; opacity: .95; }
   .btns { display: flex; gap: 10px; flex-wrap: wrap; position: relative; z-index: 1; }
   .btn { display: inline-flex; align-items: center; gap: 8px; font: inherit; font-weight: 800; border: 0; cursor: pointer;
-    padding: 13px 20px; border-radius: 14px; text-decoration: none; background: #fff; color: #7a2300; min-height: 48px; }
-  .btn.ghost { background: rgba(255,255,255,.22); color: inherit; }
+    padding: 13px 20px; border-radius: 14px; text-decoration: none; background: #fff; color: #003319; min-height: 48px; }
+  .btn.ghost { background: rgba(255,255,255,.16); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
   .btn:active { transform: translateY(1px); }
   .hotline.soon { background: var(--card); color: var(--ink); border: 2px dashed var(--line); box-shadow: none; }
   .hotline.soon::after { display: none; }
@@ -75,7 +79,7 @@
   form.find .go { background: var(--ink); color: var(--bg); font: inherit; font-weight: 800; border: 0; border-radius: 12px; padding: 0 22px; cursor: pointer; min-height: 48px; }
   .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
   .chip { font: inherit; font-size: .92rem; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line);
-    background: var(--card); color: var(--ink); cursor: pointer; }
+    background: var(--card); color: var(--ink); cursor: pointer; text-decoration: none; }
   .chip:hover { border-color: var(--accent); }
   #msg { min-height: 1.4em; margin: 12px 4px 0; color: var(--muted); font-weight: 600; }
 
@@ -124,6 +128,12 @@
   .info p { margin: 0; color: var(--muted); font-size: .95rem; }
   footer { margin: 30px 0 60px; color: var(--muted); font-size: .9rem; }
   footer p { margin: 0 0 8px; max-width: 70ch; }
+
+  /* GCSU type: Oswald headings, Mulish body */
+  h1, h2, h3, .brand, .hotline .num { font-family: "Oswald", "Arial Narrow", Arial, sans-serif; }
+  h1 { text-transform: uppercase; letter-spacing: .01em; font-weight: 700; line-height: 1.08; }
+  h2, h3, .brand { letter-spacing: .01em; font-weight: 600; }
+  .hotline .num { letter-spacing: .01em; font-weight: 700; }
 
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; } 70% { box-shadow: 0 0 0 9px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
   @keyframes ring { 0%, 100% { box-shadow: 0 0 0 0 var(--glow); } 50% { box-shadow: 0 0 0 10px transparent; } }
