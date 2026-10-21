@@ -96,8 +96,9 @@ window.DELIVERY = [
     "hours": "Call Mon-Fri, 8am-5pm"
   },
   {
-    "name": "2-1-1 (United Way)",
+    "name": "2-1-1 (United Way of Central Georgia)",
     "phone": "211",
-    "who": "Any age. Ask for free food delivery or someone who can pick food up for you."
+    "who": "Free, confidential referrals to food pantries and other help, for any age. Serves Baldwin County. Ask what food help, including delivery, is near you.",
+    "hours": "Dial 211, 24 hours a day, 7 days a week"
   }
 ];
