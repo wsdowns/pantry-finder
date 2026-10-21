@@ -210,6 +210,26 @@ class Voice(unittest.TestCase):
         self.assertNotIn("<Dial", pantry.voice("pick", digits="1", n="abc", now=self.WED_10))
         self.assertNotIn("<Dial", pantry.voice("pick", digits="1", n="99", now=self.WED_10))
 
+    def test_follow_up_addresses_stay_under_the_public_prefix(self):
+        # The real bug: actions like "/voice?step=menu" resolve to https://host/voice, skipping nginx's /line/ prefix (404,
+        # "application error"). Resolve every action the way Twilio does, from the URL it called, and require the prefix.
+        import re
+        from urllib.parse import urljoin
+        called = "https://example.test/line/voice"
+        CHARD["forward"] = "+14785550123"
+        idx = pantry.PANTRIES.index(CHARD)
+        calls = [dict(), dict(step="menu", digits="1"), dict(step="menu", digits="9"), dict(step="zip", digits="31062"),
+                 dict(step="zip", digits="90210"), dict(step="pick", digits="1", n=str(idx), zip_code="31062"),
+                 dict(step="pick", digits="2", zip_code="31062")]
+        found = 0
+        for kw in calls:
+            xml = pantry.voice(now=self.WED_10, **kw)
+            for action in re.findall(r'action="([^"]+)"', xml):
+                found += 1
+                resolved = urljoin(called, action.replace("&amp;", "&"))
+                self.assertTrue(resolved.startswith("https://example.test/line/voice?step="), f"{action} -> {resolved}")
+        self.assertGreaterEqual(found, 5)
+
     def test_after_dial(self):
         self.assertIn("no one answered", pantry.voice("after", dial_status="no-answer"))
         self.assertIn("<Hangup/>", pantry.voice("after", dial_status="completed"))

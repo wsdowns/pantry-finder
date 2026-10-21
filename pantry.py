@@ -216,12 +216,12 @@ def voice(step="", digits="", zip_code="", n="", dial_status="", now=None):
     now = now or datetime.now(TZ)
     goodbye = _say("We did not get that. Goodbye.")
     menu = _twiml(_say("Welcome to Milledgeville food assistance."),
-                  _gather("Press 1 to find a food pantry near you. Press 2 for home delivery.", "/voice?step=menu", 1), goodbye)
+                  _gather("Press 1 to find a food pantry near you. Press 2 for home delivery.", "voice?step=menu", 1), goodbye)
     if step == "":
         return menu
     if step == "menu":
         if digits == "1":
-            return _twiml(_gather("Enter your 5 digit ZIP code.", "/voice?step=zip", 5), goodbye)
+            return _twiml(_gather("Enter your 5 digit ZIP code.", "voice?step=zip", 5), goodbye)
         if digits == "2":
             items = [f"{d['name']}. {speak_phone(d['phone'])}. {d['who']}" for d in DELIVERY if d.get("phone")]
             return _twiml(_say("Home delivery is mostly for seniors or people who cannot leave home. Please call to confirm who qualifies."),
@@ -231,7 +231,7 @@ def voice(step="", digits="", zip_code="", n="", dial_status="", now=None):
         where = PLACES.get(digits)
         if not where:
             return _twiml(_say("Sorry, I only know Milledgeville ZIP codes, such as 3 1 0 6 1."),
-                          _gather("Enter your 5 digit ZIP code.", "/voice?step=zip", 5), goodbye)
+                          _gather("Enter your 5 digit ZIP code.", "voice?step=zip", 5), goodbye)
         top = ranked(where, now)[:2]
         spoken = []
         for p, st, when, d in top:
@@ -242,13 +242,14 @@ def voice(step="", digits="", zip_code="", n="", dial_status="", now=None):
         if connect:
             opts = f"Press 1 to be connected to {connect['name']} now. " + opts
         idx = PANTRIES.index(connect) if connect else ""
-        action = f"/voice?step=pick&zip={digits}&n={idx}"
+        # No leading slash: Twilio resolves these against the URL it called, so they stay under any prefix (nginx /line/).
+        action = f"voice?step=pick&zip={digits}&n={idx}"
         return _twiml(*[_say(s) for s in spoken], _gather(opts, action, 1), _say("Goodbye."))
     if step == "pick":
         if digits == "1" and n.isdigit() and int(n) < len(PANTRIES) and _connectable(PANTRIES[int(n)], now):
             p = PANTRIES[int(n)]
             return _twiml(_say(f"Connecting you to {p['name']}. They are volunteers, so please be patient."),
-                          f'<Dial timeout="25" action="/voice?step=after">{xml_esc(forward_number(p))}</Dial>')
+                          f'<Dial timeout="25" action="voice?step=after">{xml_esc(forward_number(p))}</Dial>')
         if digits == "1":
             return _twiml(_say("Sorry, that pantry has just closed. Please call back during their hours. Goodbye."))
         if digits == "2":
