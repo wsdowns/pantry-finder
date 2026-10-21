@@ -30,9 +30,8 @@ Host it free on GitHub Pages, Netlify, or Cloudflare Pages by publishing the `si
 1. **The problem (20s).** Open the site. "Food assistance is scattered across Facebook pages, directories and phone trees, and the hours are short: Chard Wray is open about 9 hours a week."
 2. **Time machine (40s).** Click "Tue 10am: two open": map pins turn green, cards say Open now. Then "Sat 3pm: all closed" to show it never sends anyone to a locked door. Use the day buttons and slider to scrub the week.
 3. **Map (20s).** Click a pin; the page jumps to its card with hours, directions and a tap-to-call number. Search "GCSU" to move the "You" marker.
-4. **Text line (40s).** In "Try the text line", tap `31061`, then `delivery`. "This is the same code that answers real texts. A test checks the website and the text line give identical answers."
-5. **Phone line (40s).** Press Call, 1, then 31061. Tick "Read aloud" to hear it: one pantry, nearest first, then press 3 for the next closest, 2 to repeat, 9 to start over. Press 1 to be connected (in the browser it stops at "the call would now ring the pantry"; the real line dials it, with a voicemail warning when the pantry is closed). Then try 2 on the menu for delivery, same keys. Better still, call the real number.
-6. **Honesty slide (20s).** "Sources disagree on several pantries (see `pantries.json`), so we list only what sources agree on and tell people to call first. Next step is phone confirmation and pantry opt-in."
+4. **Phone line (40s).** Press Call, 1, then 31061. Tick "Read aloud" to hear it: one pantry, nearest first, then press 3 for the next closest, 2 to repeat, 9 to start over. Press 1 to be connected (in the browser it stops at "the call would now ring the pantry"; the real line dials it, with a voicemail warning when the pantry is closed). Then try 2 on the menu for delivery, same keys. Better still, call the real number.
+5. **Honesty slide (20s).** "Sources disagree on several pantries (see `pantries.json`), so we list only what sources agree on and tell people to call first. Next step is confirming hours and numbers by phone."
 
 ## Closures
 Add `"closures": ["2026-11-26"]` (ISO dates) to a pantry in `pantries.json` to skip that day. Run `python3 -m unittest` after editing the code.
@@ -95,7 +94,7 @@ The phone line already runs on the Lightsail server and is waiting for a Twilio 
 ## Data caveats
 - Hours come from pantry sites, Lemontree, and findhelp (reviewed Oct 2026). Call pantries to confirm before launch, and re-check periodically.
 - First Presbyterian's coordinates and the ZIP/landmark center points are approximate, so distances are rough.
-- Street-address lookup (website, text simulator and real text line) uses the free US Census geocoder and needs internet. It is optional; ZIP and landmark search never leave the page. The page tells people the address goes to the Census Bureau and is not stored.
+- Street-address lookup (website and the real text line, which is switched off for now) uses the free US Census geocoder and needs internet. It is optional; ZIP and landmark search never leave the page. The page tells people the address goes to the Census Bureau and is not stored.
   - The Census can match a different address than typed (it turned `210 S Wayne St` into `210 N Wayne St`), so every address answer shows the matched address first.
   - Addresses more than 40 miles from downtown Milledgeville are rejected.
   - Central State campus addresses (454/472 Broad St) are not in the Census data, so they don't match.

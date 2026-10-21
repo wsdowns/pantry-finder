@@ -276,28 +276,6 @@
     return `<div class="dcard"><h3>${esc(d.name)}</h3><p>${esc(d.who)}</p>${d.hours ? `<small>${esc(d.hours)}</small>` : ""}${act}</div>`;
   }).join("");
 
-  // ---------- Text line simulator ----------
-  const linkify = (t) => esc(t).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">Open directions</a>');
-  const addMsg = (cls, html) => { const m = document.createElement("div"); m.className = "bub " + cls; m.innerHTML = html; $("msgs").appendChild(m); $("msgs").scrollTop = 1e9; return m; };
-  function sendText(text) {
-    text = text.trim(); if (!text) return;
-    addMsg("me", esc(text));
-    const typing = addMsg("bot typing", "• • •");
-    setTimeout(async () => {
-      let reply = F.smsAnswer(text, nowMs(), P, D);
-      if (reply.startsWith("Sorry, I couldn't find") && looksLikeAddress(text)) {
-        const g = await geocode(text);
-        reply = g && inArea(g.pt) ? `Matched address: ${g.matched}\n\n` + F.smsAnswer(text, nowMs(), P, D, g.pt, g.matched)
-          : "Sorry, I couldn't find that address. Try adding the ZIP code, or text a ZIP like 31061.";
-      }
-      typing.remove(); addMsg("bot", linkify(reply));
-    }, 650);
-  }
-  $("smschips").innerHTML = ["31061", "GCSU", "delivery"].map((t) => `<button class="chip" type="button">${esc(t)}</button>`).join("");
-  $("smschips").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => sendText(b.textContent)));
-  $("smsform").addEventListener("submit", (e) => { e.preventDefault(); sendText($("smsin").value); $("smsin").value = ""; });
-  addMsg("bot", "Hi! Text a ZIP code, a place like GCSU, or the word delivery, and I'll find food.");
-
   // ---------- Phone line simulator ----------
   const call = { active: false, step: "", ctx: {}, expect: 0, buf: "" };
   const line = (cls, t) => { const d = document.createElement("div"); d.className = "cline " + cls; d.textContent = t; $("callscreen").appendChild(d); $("callscreen").scrollTop = 1e9; };
