@@ -154,17 +154,23 @@
       const say = top.map((r) => `${r.p.name}, ${r.dist.toFixed(1)} miles away, at ${r.p.address}. ` +
         (r.state === "open" ? `It is open now, until ${fmt(r.when, nowMs)}.` : `It is closed. It opens ${fmt(r.when, nowMs)}.`) +
         ` Phone: ${speakPhone(r.p.phone)}.`);
-      const conn = top.find((r) => r.state === "open" && forwardNumber(r.p));
+      // Offer to connect even when closed (its phone takes messages): the best open pantry if any, else the nearest to open.
+      const conn = top.find((r) => forwardNumber(r.p));
       let opts = "Press 2 to hear this again. Press 9 to start over.";
-      if (conn) opts = `Press 1 to be connected to ${conn.p.name} now. ` + opts;
+      if (conn) {
+        opts = (conn.state === "open" ? `Press 1 to be connected to ${conn.p.name} now. `
+          : `Press 1 to be connected to ${conn.p.name}. It is closed now, so you can leave a message. `) + opts;
+      }
       return { say, ask: { prompt: opts, digits: 1, step: "pick", ctx: { zip: digits, n: conn ? pantries.indexOf(conn.p) : -1 } } };
     }
     if (step === "pick") {
       const p = ctx.n >= 0 ? pantries[ctx.n] : null;
-      const ok = !!(p && forwardNumber(p) && status(p, nowMs).state === "open");
+      const ok = !!(p && forwardNumber(p));
       if (digits === "1") {
-        return { end: true, connected: ok, say: ok ? [`Connecting you to ${p.name}. They are volunteers, so please be patient.`]
-          : ["Sorry, that pantry has just closed. Please call back during their hours. Goodbye."] };
+        const open = ok && status(p, nowMs).state === "open";
+        return { end: true, connected: ok, say: !ok ? ["Sorry, I could not connect that call. Please dial the number I read out. Goodbye."]
+          : open ? [`Connecting you to ${p.name}. They are volunteers, so please be patient.`]
+          : [`Connecting you to ${p.name}. They are closed right now, so you may reach a voicemail. Please leave your name and phone number.`] };
       }
       if (digits === "2") return ivr("zip", ctx.zip, {}, nowMs, pantries, delivery);
       return menu;

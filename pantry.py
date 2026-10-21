@@ -206,11 +206,6 @@ def forward_number(p):
     return "+1" + digits if len(digits) == 10 else None
 
 
-def _connectable(p, now):
-    """Forward only while the pantry is open by its listed hours."""
-    return bool(forward_number(p)) and status(p, now)[0] == "open"
-
-
 def voice(step="", digits="", zip_code="", n="", dial_status="", now=None):
     """TwiML for the phone line. step: '' menu, 'menu', 'zip', 'pick', 'after'."""
     now = now or datetime.now(TZ)
@@ -237,28 +232,36 @@ def voice(step="", digits="", zip_code="", n="", dial_status="", now=None):
         for p, st, when, d in top:
             when_txt = f"It is open now, until {fmt(when, now)}." if st == "open" else f"It is closed. It opens {fmt(when, now)}."
             spoken.append(f"{p['name']}, {d:.1f} miles away, at {p['address']}. {when_txt} Phone: {speak_phone(p['phone'])}.")
-        connect = next((p for p, *_ in top if _connectable(p, now)), None)
+        # Offer to connect even when the pantry is closed: its phone takes messages. The list is open-first, so this is
+        # the best open pantry if there is one, else the nearest to open.
+        connect = next((p for p, *_ in top if forward_number(p)), None)
         opts = "Press 2 to hear this again. Press 9 to start over."
         if connect:
-            opts = f"Press 1 to be connected to {connect['name']} now. " + opts
+            opens = status(connect, now)[0] == "open"
+            opts = (f"Press 1 to be connected to {connect['name']} now. " if opens else
+                    f"Press 1 to be connected to {connect['name']}. It is closed now, so you can leave a message. ") + opts
         idx = PANTRIES.index(connect) if connect else ""
         # No leading slash: Twilio resolves these against the URL it called, so they stay under any prefix (nginx /line/).
         action = f"voice?step=pick&zip={digits}&n={idx}"
         return _twiml(*[_say(s) for s in spoken], _gather(opts, action, 1), _say("Goodbye."))
     if step == "pick":
-        if digits == "1" and n.isdigit() and int(n) < len(PANTRIES) and _connectable(PANTRIES[int(n)], now):
+        if digits == "1" and n.isdigit() and int(n) < len(PANTRIES) and forward_number(PANTRIES[int(n)]):
             p = PANTRIES[int(n)]
-            return _twiml(_say(f"Connecting you to {p['name']}. They are volunteers, so please be patient."),
-                          f'<Dial timeout="25" action="voice?step=after">{xml_esc(forward_number(p))}</Dial>')
+            if status(p, now)[0] == "open":
+                intro, ring = f"Connecting you to {p['name']}. They are volunteers, so please be patient.", 25
+            else:  # closed: ring longer so a voicemail has time to pick up, and say so
+                intro, ring = (f"Connecting you to {p['name']}. They are closed right now, so you may reach a voicemail. "
+                               "Please leave your name and phone number.", 45)
+            return _twiml(_say(intro), f'<Dial timeout="{ring}" action="voice?step=after">{xml_esc(forward_number(p))}</Dial>')
         if digits == "1":
-            return _twiml(_say("Sorry, that pantry has just closed. Please call back during their hours. Goodbye."))
+            return _twiml(_say("Sorry, I could not connect that call. Please dial the number I read out. Goodbye."))
         if digits == "2":
             return voice("zip", digits=zip_code, now=now)
         return menu
     if step == "after":
         if dial_status == "completed":
             return _twiml("<Hangup/>")
-        return _twiml(_say("Sorry, no one answered. Please try again during pantry hours. Goodbye."))
+        return _twiml(_say("Sorry, no one picked up. Please try again later. Goodbye."))
     return menu
 
 

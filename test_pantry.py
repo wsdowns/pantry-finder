@@ -180,7 +180,16 @@ class Voice(unittest.TestCase):
     def test_forward_false_turns_it_off_for_a_pantry(self):
         CHARD["forward"] = False
         self.assertIsNone(pantry.forward_number(CHARD))
-        self.assertNotIn("be connected", pantry.voice("zip", digits="31062", now=self.WED_10))
+        # Chard Wray is the nearest and open, but with forwarding off the offer goes to the next pantry that can connect.
+        self.assertNotIn("connected to Chard Wray", pantry.voice("zip", digits="31062", now=self.WED_10))
+        saved = [(p, p.get("forward")) for p in pantry.PANTRIES]
+        try:
+            for p in pantry.PANTRIES:
+                p["forward"] = False
+            self.assertNotIn("be connected", pantry.voice("zip", digits="31062", now=self.WED_10))
+        finally:
+            for p, old in saved:
+                p.pop("forward", None) if old is None else p.__setitem__("forward", old)
 
     def test_phone_with_extension_forwards_to_the_main_number(self):
         self.assertEqual(pantry.forward_number({"phone": "(478) 453-4111 ext. 2"}), "+14784534111")
@@ -191,20 +200,24 @@ class Voice(unittest.TestCase):
         self.assertIn("only know Milledgeville ZIP", out)
         self.assertNotIn("<Dial", out)
 
-    def test_connect_offered_and_dialed_only_when_open_with_forward_number(self):
+    def test_connect_is_offered_and_dialed_open_or_closed(self):
         CHARD["forward"] = "+14785550123"
         idx = pantry.PANTRIES.index(CHARD)
+        # Open: plain offer, normal ring time, no voicemail warning.
         offer = pantry.voice("zip", digits="31062", now=self.WED_10)
-        self.assertIn("Press 1 to be connected to Chard Wray", offer)
+        self.assertIn("Press 1 to be connected to Chard Wray Food Pantry now.", offer)
         self.assertIn(f"n={idx}", offer)
         dial = pantry.voice("pick", digits="1", zip_code="31062", n=str(idx), now=self.WED_10)
-        self.assertIn("<Dial", dial)
+        self.assertIn('<Dial timeout="25"', dial)
         self.assertIn("+14785550123", dial)
-        # Same pick after hours must not dial.
+        self.assertNotIn("voicemail", dial)
+        # Closed (they take messages): still offered and dialed, with a clear warning and a longer ring.
+        closed_offer = pantry.voice("zip", digits="31062", now=self.WED_13)
+        self.assertIn("is closed now, so you can leave a message", closed_offer)
         closed = pantry.voice("pick", digits="1", zip_code="31062", n=str(idx), now=self.WED_13)
-        self.assertNotIn("<Dial", closed)
-        self.assertIn("just closed", closed)
-        self.assertNotIn("be connected", pantry.voice("zip", digits="31062", now=self.WED_13))
+        self.assertIn('<Dial timeout="45"', closed)
+        self.assertIn("+14785550123", closed)
+        self.assertIn("you may reach a voicemail", closed)
 
     def test_bad_n_does_not_crash(self):
         self.assertNotIn("<Dial", pantry.voice("pick", digits="1", n="abc", now=self.WED_10))
@@ -231,7 +244,7 @@ class Voice(unittest.TestCase):
         self.assertGreaterEqual(found, 5)
 
     def test_after_dial(self):
-        self.assertIn("no one answered", pantry.voice("after", dial_status="no-answer"))
+        self.assertIn("no one picked up", pantry.voice("after", dial_status="no-answer"))
         self.assertIn("<Hangup/>", pantry.voice("after", dial_status="completed"))
 
     def test_all_steps_are_wellformed_xml(self):

@@ -78,7 +78,7 @@ The phone line already runs on the Lightsail server and is waiting for a Twilio 
 
 ## Voice line and call forwarding
 `POST /voice` is the phone line: menu (1 = pantry near you, 2 = home delivery), the caller keys a ZIP, hears the two best pantries, and can be connected to one.
-- **Forwarding is on by default** for every pantry, to its published `phone` (no opt-in needed). Calls are forwarded only while that pantry is open by its listed hours; otherwise the caller hears when it opens. In `pantries.json`, `"forward": false` turns it off for one pantry and `"forward": "+1478XXXXXXX"` overrides the number.
+- **Forwarding is on by default** for every pantry, to its published `phone` (no opt-in needed). A caller can be connected whether the pantry is open or closed: when closed, they are told it's closed and they may reach a voicemail (the call rings 45 seconds instead of 25 so a voicemail can pick up). In `pantries.json`, `"forward": false` turns it off for one pantry and `"forward": "+1478XXXXXXX"` overrides the number.
 - Caveats: Chard Wray's and MIA's published numbers are still unconfirmed (sources conflict), and the person answering is often a volunteer. By default the pantry sees the caller's own number as caller ID.
 - Point the number's "A call comes in" webhook at `POST https://<public-host>/voice`.
 - Twilio signs the full URL including `?step=...`, so for signature checking set `PUBLIC_BASE_URL=https://<public-host>` (scheme + host, no trailing slash). `PUBLIC_URL` still works for `/sms` alone.
