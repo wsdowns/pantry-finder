@@ -116,6 +116,14 @@
     return lines.join("\n\n") + "\n\nHours change; call first. Reply with another ZIP to search again.";
   }
 
+  // Mirrors pantry.py's forward_number(): an explicit number, else the published phone; false turns it off.
+  function forwardNumber(p) {
+    if (p.forward === false) return null;
+    if (p.forward) return p.forward;
+    const d = p.phone.split("ext.")[0].replace(/\D/g, "");
+    return d.length === 10 ? "+1" + d : null;
+  }
+
   // One step of the phone line. Returns {say:[...], ask:{prompt,digits,step,ctx}|undefined, end?:true}.
   function ivr(step, digits, ctx, nowMs, pantries, delivery) {
     const menu = { say: ["Welcome to Milledgeville food help."],
@@ -137,14 +145,14 @@
       const say = top.map((r) => `${r.p.name}, ${r.dist.toFixed(1)} miles away, at ${r.p.address}. ` +
         (r.state === "open" ? `It is open now, until ${fmt(r.when, nowMs)}.` : `It is closed. It opens ${fmt(r.when, nowMs)}.`) +
         ` Phone: ${speakPhone(r.p.phone)}.`);
-      const conn = top.find((r) => r.state === "open" && r.p.forward);
+      const conn = top.find((r) => r.state === "open" && forwardNumber(r.p));
       let opts = "Press 2 to hear this again. Press 9 to start over.";
       if (conn) opts = `Press 1 to be connected to ${conn.p.name} now. ` + opts;
       return { say, ask: { prompt: opts, digits: 1, step: "pick", ctx: { zip: digits, n: conn ? pantries.indexOf(conn.p) : -1 } } };
     }
     if (step === "pick") {
       const p = ctx.n >= 0 ? pantries[ctx.n] : null;
-      const ok = !!(p && p.forward && status(p, nowMs).state === "open");
+      const ok = !!(p && forwardNumber(p) && status(p, nowMs).state === "open");
       if (digits === "1") {
         return { end: true, connected: ok, say: ok ? [`Connecting you to ${p.name}. They are volunteers, so please be patient.`]
           : ["Sorry, that pantry has just closed. Please call back during their hours. Goodbye."] };
@@ -156,6 +164,6 @@
   }
 
   root.Finder = { PLACES, etNow, windowsOn, status, miles, locate, rank, fmt, fmtTime, dayStart, DAY, HOUR,
-    smsAnswer, deliveryAnswer, ivr, speakPhone };
+    smsAnswer, deliveryAnswer, ivr, speakPhone, forwardNumber };
   if (typeof module !== "undefined") module.exports = root.Finder;
 })(typeof window !== "undefined" ? window : globalThis);

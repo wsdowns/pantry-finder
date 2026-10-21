@@ -210,7 +210,7 @@
     window.speechSynthesis.cancel();
     texts.forEach((t) => { const u = new SpeechSynthesisUtterance(t); u.rate = 0.95; window.speechSynthesis.speak(u); });
   }
-  const pantriesForCall = () => (!$("fwd").checked ? P : P.map((p) => ({ ...p, forward: "+1-demo" })));
+  const pantriesForCall = () => P;
   function run(out) {
     const said = [...out.say]; if (out.ask) said.push(out.ask.prompt);
     out.say.forEach((t) => line("", "📞 " + t));

@@ -68,12 +68,15 @@ test("phone line: menu, ZIP, delivery, connect only when open and enabled", () =
   assert.ok(del.end && del.say.some((s) => s.includes("4 7 8, 4 5 1, 0 4 4 5")));
   const zip = F.ivr("zip", "31062", {}, now, P, DELIVERY);
   assert.ok(zip.say[0].startsWith("Chard Wray") && zip.say[0].includes("open now"));
-  assert.ok(!zip.ask.prompt.includes("connected"));
-  const fwd = P.map((p) => (p === chard ? { ...p, forward: "+14785550123" } : p));
-  const offer = F.ivr("zip", "31062", {}, now, fwd, DELIVERY);
-  assert.ok(offer.ask.prompt.startsWith("Press 1 to be connected to Chard Wray"));
-  assert.strictEqual(F.ivr("pick", "1", offer.ask.ctx, now, fwd, DELIVERY).connected, true);
-  assert.strictEqual(F.ivr("pick", "1", offer.ask.ctx, at(2026, 10, 21, 13), fwd, DELIVERY).connected, false);
+  // Forwarding is on by default (published phone), only while open; forward:false turns it off.
+  assert.ok(zip.ask.prompt.startsWith("Press 1 to be connected to Chard Wray"));
+  assert.strictEqual(F.forwardNumber(chard), "+14784141126");
+  assert.strictEqual(F.forwardNumber({ phone: "(478) 453-4111 ext. 2" }), "+14784534111");
+  assert.strictEqual(F.forwardNumber({ phone: "211" }), null);
+  assert.strictEqual(F.ivr("pick", "1", zip.ask.ctx, now, P, DELIVERY).connected, true);
+  assert.strictEqual(F.ivr("pick", "1", zip.ask.ctx, at(2026, 10, 21, 13), P, DELIVERY).connected, false);
+  const off = P.map((p) => (p === chard ? { ...p, forward: false } : p));
+  assert.ok(!F.ivr("zip", "31062", {}, now, off, DELIVERY).ask.prompt.includes("connected"));
   assert.ok(F.ivr("zip", "90210", {}, now, P, DELIVERY).say[0].includes("only know"));
 });
 

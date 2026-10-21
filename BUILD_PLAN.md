@@ -36,10 +36,10 @@ Waiting on teammate for: Twilio account/number, registration type and approval s
 
 ## Phase 4: Voice line (optional, can run in parallel with Phase 2)
 - [x] `/voice` webhook: menu, ZIP by keypad, reads top 2 pantries aloud, home-delivery option
-- [x] Call forwarding to a pantry, only while open and only if `forward` is set in `pantries.json` (none set yet)
+- [x] Call forwarding to a pantry's published phone by default, only while open; `"forward": false` turns it off per pantry
 - [ ] Offer to text the details to the caller (needs Twilio REST credentials)
 - [x] Same signature check (use `PUBLIC_BASE_URL`)
-- [ ] Get each pantry's OK and a confirmed number before enabling `forward`
+- [ ] Confirm Chard Wray's and MIA's phone numbers (sources conflict) so forwarded calls reach the right place
 - Can go live before SMS registration clears
 
 ## Phase 5: Operate

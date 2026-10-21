@@ -163,9 +163,21 @@ def _twiml(*parts):
     return '<?xml version="1.0" encoding="UTF-8"?><Response>' + "".join(parts) + "</Response>"
 
 
+def forward_number(p):
+    """Where a call is forwarded: an explicit 'forward' number, else the pantry's published phone.
+    "forward": false in pantries.json turns forwarding off for that pantry."""
+    f = p.get("forward")
+    if f is False:
+        return None
+    if f:
+        return f
+    digits = re.sub(r"\D", "", p["phone"].split("ext.")[0])
+    return "+1" + digits if len(digits) == 10 else None
+
+
 def _connectable(p, now):
-    """Only forward calls to a pantry that is open right now and has a confirmed forwarding number."""
-    return bool(p.get("forward")) and status(p, now)[0] == "open"
+    """Forward only while the pantry is open by its listed hours."""
+    return bool(forward_number(p)) and status(p, now)[0] == "open"
 
 
 def voice(step="", digits="", zip_code="", n="", dial_status="", now=None):
@@ -205,7 +217,7 @@ def voice(step="", digits="", zip_code="", n="", dial_status="", now=None):
         if digits == "1" and n.isdigit() and int(n) < len(PANTRIES) and _connectable(PANTRIES[int(n)], now):
             p = PANTRIES[int(n)]
             return _twiml(_say(f"Connecting you to {p['name']}. They are volunteers, so please be patient."),
-                          f'<Dial timeout="25" action="/voice?step=after">{xml_esc(p["forward"])}</Dial>')
+                          f'<Dial timeout="25" action="/voice?step=after">{xml_esc(forward_number(p))}</Dial>')
         if digits == "1":
             return _twiml(_say("Sorry, that pantry has just closed. Please call back during their hours. Goodbye."))
         if digits == "2":

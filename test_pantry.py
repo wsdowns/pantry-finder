@@ -95,11 +95,25 @@ class Voice(unittest.TestCase):
         self.assertIn("Baldwin County Senior Citizens Center", out)
         self.assertIn("4 7 8, 4 5 1, 0 4 4 5", out)
 
-    def test_zip_reads_pantries_without_connect_when_no_forward_number(self):
+    def test_forwarding_is_on_by_default_using_the_published_phone(self):
+        self.assertEqual(pantry.forward_number(CHARD), "+14784141126")
         out = pantry.voice("zip", digits="31062", now=self.WED_10)
         self.assertIn("Chard Wray Food Pantry", out)
         self.assertIn("open now", out)
-        self.assertNotIn("be connected", out)
+        self.assertIn("Press 1 to be connected to Chard Wray", out)
+        idx = pantry.PANTRIES.index(CHARD)
+        dial = pantry.voice("pick", digits="1", zip_code="31062", n=str(idx), now=self.WED_10)
+        self.assertIn("<Dial", dial)
+        self.assertIn("+14784141126", dial)
+
+    def test_forward_false_turns_it_off_for_a_pantry(self):
+        CHARD["forward"] = False
+        self.assertIsNone(pantry.forward_number(CHARD))
+        self.assertNotIn("be connected", pantry.voice("zip", digits="31062", now=self.WED_10))
+
+    def test_phone_with_extension_forwards_to_the_main_number(self):
+        self.assertEqual(pantry.forward_number({"phone": "(478) 453-4111 ext. 2"}), "+14784534111")
+        self.assertIsNone(pantry.forward_number({"phone": "211"}))
 
     def test_unknown_zip_asks_again(self):
         out = pantry.voice("zip", digits="90210", now=self.WED_10)
