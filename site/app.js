@@ -26,20 +26,24 @@
 
   // ---------- Phone section: shows the number once configured ----------
   (function hotline() {
-    if (!H.display || !H.tel) return;
+    const voice = !!H.voiceEnabled, text = !!H.textEnabled;
+    if (!H.display || !H.tel || (!voice && !text)) return;
     const box = $("help"), num = $("hl-num"), btns = $("hl-btns");
     box.classList.remove("soon");
-    $("hl-kicker").textContent = H.voiceEnabled ? "Text or call for help" : "Text for help";
+    $("hl-kicker").textContent = voice && text ? "Text or call for help" : voice ? "Call for help" : "Text for help";
     num.textContent = H.display; num.href = "tel:" + H.tel;
-    $("hl-text").textContent = H.voiceEnabled
+    $("hl-text").textContent = voice && text
       ? "Text your ZIP code and we text back the nearest open pantry. Prefer to talk? Call and press your ZIP on the keypad."
-      : "Text your ZIP code and we text back the nearest open pantry. No app or internet needed.";
-    btns.innerHTML = `<a class="btn" href="sms:${esc(H.tel)}?body=31061"><span aria-hidden="true">💬</span> Text us</a>` +
-      (H.voiceEnabled ? `<a class="btn ghost" href="tel:${esc(H.tel)}"><span aria-hidden="true">📞</span> Call</a>` : "");
+      : voice
+        ? "Call and press your ZIP code on the keypad. You'll hear the nearest open pantry, and we can connect you to it. No app or internet needed."
+        : "Text your ZIP code and we text back the nearest open pantry. No app or internet needed.";
+    const callBtn = `<a class="btn" href="tel:${esc(H.tel)}"><span aria-hidden="true">📞</span> Call</a>`;
+    const textBtn = `<a class="btn${voice ? " ghost" : ""}" href="sms:${esc(H.tel)}?body=31061"><span aria-hidden="true">💬</span> Text us</a>`;
+    btns.innerHTML = (voice ? callBtn : "") + (text ? textBtn : "");
     const bc = $("barcall");
-    bc.classList.remove("soon"); bc.href = H.voiceEnabled ? "tel:" + H.tel : "sms:" + H.tel + "?body=31061";
-    bc.innerHTML = `<span aria-hidden="true">${H.voiceEnabled ? "📞" : "💬"}</span> ${esc(H.display)}`;
-    bc.setAttribute("aria-label", (H.voiceEnabled ? "Call " : "Text ") + H.display);
+    bc.classList.remove("soon"); bc.href = voice ? "tel:" + H.tel : "sms:" + H.tel + "?body=31061";
+    bc.innerHTML = `<span aria-hidden="true">${voice ? "📞" : "💬"}</span> ${esc(H.display)}`;
+    bc.setAttribute("aria-label", (voice ? "Call " : "Text ") + H.display);
   })();
 
   // ---------- Pantry cards ----------

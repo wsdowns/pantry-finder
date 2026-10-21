@@ -55,6 +55,27 @@ python3 pantry.py --serve
 ```
 When `TWILIO_AUTH_TOKEN` is unset, checking is off (fine for local testing). If you sit behind a proxy that changes the URL, `PUBLIC_URL` must still be the URL Twilio was configured with.
 
+## Going live with Twilio (voice only)
+The phone line already runs on the Lightsail server and is waiting for a Twilio number. Texting is off for now.
+
+**The webhook:** `POST https://3-14-120-244.sslip.io/line/voice` (HTTPS, free Let's Encrypt certificate that renews itself). Health check: `https://3-14-120-244.sslip.io/line/health` returns `ok`.
+
+1. **Twilio console:** Phone Numbers > Manage > Active numbers > pick the number > Configure. Under **Voice Configuration**, "A call comes in": **Webhook**, URL above, **HTTP POST**. Leave **Messaging** alone (a number's text webhook may belong to another app, such as ChurchTrakr).
+2. **Give the server the Auth Token** (Twilio console > Account info; the server refuses unsigned requests until this is set). On the server:
+   ```
+   sudo nano /etc/pantry-line.env      # add a line: TWILIO_AUTH_TOKEN=your token
+   sudo systemctl restart pantry-line
+   ```
+3. **Check it** from your computer, before calling: `python3 check_webhook.py` (asks for the token with hidden input; nothing is printed or saved). Three PASS lines mean Twilio's signed requests will be accepted.
+4. **Call the number.** Expected: "Welcome to Milledgeville food assistance..." then the menu.
+5. **Put the number on the website:** in `site/config.js` set `display`, `tel` and `voiceEnabled: true` (leave `textEnabled: false`), then redeploy the site.
+
+**Running it:** the service is `pantry-line` (systemd, runs as `www-data`, listens only on 127.0.0.1:8081; nginx forwards `/line/` to it). Code is in `/opt/pantry-line/`, settings in `/etc/pantry-line.env` (root only).
+- Logs: `sudo journalctl -u pantry-line -f` (shows request lines and ZIPs in query strings; never caller numbers or call content).
+- After changing `pantry.py` or `pantries.json` (hours, phones, forwarding): `scp` them to the server, `sudo cp` into `/opt/pantry-line/`, then `sudo systemctl restart pantry-line`.
+- nginx entry: `/etc/nginx/sites-available/pantry-line`. The website is also served over HTTPS at `https://3-14-120-244.sslip.io/pantry/` (so "Use my location" works there).
+- A real domain later: point it at the server, add it to that nginx entry, run certbot, and change `PUBLIC_BASE_URL` in `/etc/pantry-line.env` (Twilio signs the exact URL it calls) plus the Twilio webhook.
+
 ## Voice line and call forwarding
 `POST /voice` is the phone line: menu (1 = pantry near you, 2 = home delivery), the caller keys a ZIP, hears the two best pantries, and can be connected to one.
 - **Forwarding is on by default** for every pantry, to its published `phone` (no opt-in needed). Calls are forwarded only while that pantry is open by its listed hours; otherwise the caller hears when it opens. In `pantries.json`, `"forward": false` turns it off for one pantry and `"forward": "+1478XXXXXXX"` overrides the number.

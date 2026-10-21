@@ -19,7 +19,14 @@ Status legend: [x] done, [ ] to do, [?] waiting on Twilio detail from teammate.
 - [ ] Decide an owner and cadence for re-checking hours (suggest monthly), and a "last verified" date per pantry
 - Done when: every listed pantry has a human-confirmed date in `pantries.json`
 
-## Phase 2: Texting live  [?]
+## Phase 2a: Voice line live (decision 2026-10-21: voice only, text chat cleaned up later)
+- [x] Phone-line service running on Lightsail behind nginx with HTTPS (webhook `https://3-14-120-244.sslip.io/line/voice`)
+- [x] Refuses unsigned requests; `check_webhook.py` to verify the Twilio token end to end
+- [ ] Twilio number configured: voice webhook set, Auth Token added to `/etc/pantry-line.env`
+- [ ] Test calls (menu, ZIP, delivery, connect to an open pantry)
+- [ ] Put the number on the website (`voiceEnabled: true`)
+
+## Phase 2: Texting live (deferred)  [?]
 Waiting on teammate for: Twilio account/number, registration type and approval status, hosting choice, public URL.
 - [ ] Carrier registration submitted (long pole: days to weeks)
 - [ ] Deploy server on an always-on host (not a laptop); set `HOST`, `TWILIO_AUTH_TOKEN`, `PUBLIC_URL`

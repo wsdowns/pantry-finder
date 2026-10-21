@@ -6,7 +6,7 @@ Server:   python3 pantry.py --serve        (POST /sms and POST /voice, Twilio-st
 """
 import base64, hashlib, hmac, json, math, os, re, sys, urllib.parse, urllib.request
 from datetime import datetime, timedelta
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -262,6 +262,15 @@ def voice(step="", digits="", zip_code="", n="", dial_status="", now=None):
 
 
 class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        ok = urllib.parse.urlparse(self.path).path == "/health"
+        body = b"ok\n" if ok else b"not found\n"
+        self.send_response(200 if ok else 404)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_POST(self):
         body = self.rfile.read(int(self.headers.get("Content-Length", 0))).decode()
         form = {k: v[0] for k, v in urllib.parse.parse_qs(body, keep_blank_values=True).items()}
@@ -276,6 +285,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_response(403)
                 self.end_headers()
                 return
+        elif os.environ.get("REQUIRE_SIGNATURE"):
+            # Production: never answer unsigned requests, even if the auth token hasn't been added yet.
+            self.send_response(503)
+            self.end_headers()
+            return
         if url.path == "/voice":
             out = voice(query.get("step", ""), form.get("Digits", ""), query.get("zip", ""), query.get("n", ""),
                         form.get("DialCallStatus", "")).encode()
@@ -292,9 +306,9 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--serve"]:
-        host = os.environ.get("HOST", "127.0.0.1")
-        print(f"Listening on http://{host}:8080/sms")
-        HTTPServer((host, 8080), Handler).serve_forever()
+        host, port = os.environ.get("HOST", "127.0.0.1"), int(os.environ.get("PORT", "8080"))
+        print(f"Listening on http://{host}:{port} (/voice, /sms, /health)", flush=True)
+        ThreadingHTTPServer((host, port), Handler).serve_forever()
     elif len(sys.argv) > 1:
         print(answer(" ".join(sys.argv[1:])))
     else:

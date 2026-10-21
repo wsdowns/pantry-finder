@@ -1,4 +1,6 @@
+import os
 import unittest
+import urllib.parse
 from datetime import datetime
 
 import pantry
@@ -219,6 +221,75 @@ class Voice(unittest.TestCase):
                    {"step": "zip", "digits": "31061"}, {"step": "pick", "digits": "1", "n": "0"},
                    {"step": "pick", "digits": "2", "zip_code": "31061"}, {"step": "after", "dial_status": "busy"}):
             minidom.parseString(pantry.voice(now=self.WED_10, **kw))
+
+
+class Server(unittest.TestCase):
+    """Runs the real HTTP server and calls it the way Twilio does (behind an nginx /line prefix that is stripped)."""
+    BASE = "https://example.test/line"
+
+    @classmethod
+    def setUpClass(cls):
+        import threading
+        from http.server import ThreadingHTTPServer
+        cls.srv = ThreadingHTTPServer(("127.0.0.1", 0), pantry.Handler)
+        cls.port = cls.srv.server_address[1]
+        threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.srv.shutdown()
+        cls.srv.server_close()
+
+    def post(self, path, form, signature=None):
+        import urllib.error, urllib.request
+        req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", data=urllib.parse.urlencode(form).encode(), method="POST")
+        if signature is not None:
+            req.add_header("X-Twilio-Signature", signature)
+        try:
+            with urllib.request.urlopen(req) as r:
+                return r.status, r.read().decode()
+        except urllib.error.HTTPError as e:
+            return e.code, ""
+
+    @staticmethod
+    def sign(url, form, token="secret"):
+        import base64, hashlib, hmac
+        data = url + "".join(k + v for k, v in sorted(form.items()))
+        return base64.b64encode(hmac.new(token.encode(), data.encode(), hashlib.sha1).digest()).decode()
+
+    def test_health(self):
+        import urllib.request
+        with urllib.request.urlopen(f"http://127.0.0.1:{self.port}/health") as r:
+            self.assertEqual((r.status, r.read()), (200, b"ok\n"))
+
+    def test_unsigned_is_refused_in_production_even_without_a_token(self):
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"REQUIRE_SIGNATURE": "1"}, clear=False):
+            os.environ.pop("TWILIO_AUTH_TOKEN", None)
+            self.assertEqual(self.post("/voice", {"CallSid": "x"})[0], 503)
+
+    def test_wrong_signature_is_rejected_and_right_one_is_answered(self):
+        from unittest import mock
+        env = {"TWILIO_AUTH_TOKEN": "secret", "PUBLIC_BASE_URL": self.BASE, "REQUIRE_SIGNATURE": "1"}
+        with mock.patch.dict(os.environ, env):
+            self.assertEqual(self.post("/voice", {"CallSid": "x"}, "not-a-signature")[0], 403)
+            self.assertEqual(self.post("/voice", {"CallSid": "x"})[0], 403)
+            form = {"CallSid": "CA1", "From": "+14785550100"}
+            status, body = self.post("/voice", form, self.sign(self.BASE + "/voice", form))
+            self.assertEqual(status, 200)
+            self.assertIn("Welcome to Milledgeville food assistance", body)
+            # a ZIP step with a query string, signed over the full public URL including the query
+            form = {"CallSid": "CA1", "Digits": "31062"}
+            status, body = self.post("/voice?step=zip", form, self.sign(self.BASE + "/voice?step=zip", form))
+            self.assertEqual(status, 200)
+            self.assertIn("Chard Wray", body)
+
+    def test_signature_for_a_different_path_is_rejected(self):
+        from unittest import mock
+        env = {"TWILIO_AUTH_TOKEN": "secret", "PUBLIC_BASE_URL": self.BASE}
+        with mock.patch.dict(os.environ, env):
+            form = {"CallSid": "CA1"}
+            self.assertEqual(self.post("/voice", form, self.sign(self.BASE + "/sms", form))[0], 403)
 
 
 class Signature(unittest.TestCase):
