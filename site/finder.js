@@ -102,9 +102,10 @@
       "\n\nCall to confirm who qualifies. Text a ZIP to find pantries instead.";
   }
 
-  function smsAnswer(text, nowMs, pantries, delivery) {
+  // whereOverride: coordinates already looked up for a street address (the browser geocodes those itself).
+  function smsAnswer(text, nowMs, pantries, delivery, whereOverride) {
     if (DELIVERY_WORDS.some((w) => text.toLowerCase().includes(w))) return deliveryAnswer(delivery);
-    const where = locate(text);
+    const where = whereOverride || locate(text);
     if (!where) return "Sorry, I couldn't find that place. Text a ZIP (31061), a landmark (GCSU), or a street address.";
     const lines = rank(where, nowMs, pantries).slice(0, 3).map((r, i) => {
       const head = r.state === "open" ? `OPEN NOW until ${fmt(r.when, nowMs)}` : `Closed, opens ${fmt(r.when, nowMs)}`;

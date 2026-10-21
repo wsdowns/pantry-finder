@@ -82,6 +82,7 @@
   .chip { font: inherit; font-size: .92rem; font-weight: 700; padding: 8px 14px; min-height: 44px; display: inline-flex; align-items: center; border-radius: 999px; border: 1px solid var(--line);
     background: var(--card); color: var(--ink); cursor: pointer; text-decoration: none; }
   .chip:hover { border-color: var(--accent); }
+  .privacy { margin: 10px 4px 0; color: var(--muted); font-size: .85rem; max-width: 62ch; }
   #msg { min-height: 1.4em; margin: 12px 4px 0; color: var(--muted); font-weight: 600; }
 
   /* cards */
@@ -273,7 +274,7 @@
     </section>
 
     <form class="find" id="form" role="search">
-      <input id="q" name="q" type="text" inputmode="text" autocomplete="postal-code" placeholder="ZIP or place, like 31061" aria-label="ZIP code or place">
+      <input id="q" name="q" type="text" inputmode="text" autocomplete="off" placeholder="ZIP, address, or place" aria-label="ZIP code, street address, or place" aria-describedby="addrnote">
       <button class="go" type="submit">Find food</button>
     </form>
     <div class="chips">
@@ -284,6 +285,7 @@
       <button class="chip" type="button" data-q="downtown">Downtown</button>
       <a class="chip" href="#delivery">🚪 Can't get out? Get food delivered</a>
     </div>
+    <p id="addrnote" class="privacy">A street address is optional, for exact distances. If you type one, it is sent to the U.S. Census Bureau's address lookup to find your spot. We don't store it.</p>
     <p id="msg" role="status" aria-live="polite"></p>
 
     <details class="tm" id="tm" open>
@@ -312,7 +314,7 @@
         <div class="phead"><b>💬 Text line</b><small>text anything to the number</small></div>
         <div class="msgs" id="msgs" aria-live="polite"></div>
         <div class="chips pchips" id="smschips"></div>
-        <form class="pform" id="smsform"><input id="smsin" placeholder="Try 31061, GCSU, or delivery" autocomplete="off" aria-label="Message"><button type="submit">Send</button></form>
+        <form class="pform" id="smsform"><input id="smsin" placeholder="Try 31061, an address, or delivery" autocomplete="off" aria-label="Message"><button type="submit">Send</button></form>
       </div>
       <div class="phone" aria-label="Phone call simulator">
         <div class="phead"><b>📞 Phone line</b><small>press keys like a real call</small></div>

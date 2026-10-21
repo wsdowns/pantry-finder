@@ -173,10 +173,43 @@
     renderMap(rows);
     syncTm();
   }
-  function search(text) {
+  // Street-address lookup uses the U.S. Census Bureau geocoder. It sends no CORS headers, so we use its script-tag (JSONP)
+  // form; only the two coordinate numbers from the reply are ever used.
+  const looksLikeAddress = (t) => /^\d+\s+\S+/.test(String(t).trim()) && String(t).trim().length >= 6;
+  function geocode(text) {
+    return new Promise((resolve) => {
+      const q = /\bga\b|georgia/i.test(text) ? text : text + ", Milledgeville, GA";
+      const cb = "_gc" + Date.now() + Math.floor(Math.random() * 1e4), s = document.createElement("script");
+      let t;
+      const done = (v) => { clearTimeout(t); delete window[cb]; s.remove(); resolve(v); };
+      t = setTimeout(() => done(null), 8000);
+      window[cb] = (data) => {
+        try {
+          const m = data.result.addressMatches[0], lat = Number(m.coordinates.y), lng = Number(m.coordinates.x);
+          // The Census can match a different address than typed (S Wayne St -> N Wayne St), so we return it to show back.
+          done(Number.isFinite(lat) && Number.isFinite(lng) ? { pt: [lat, lng], matched: niceAddress(String(m.matchedAddress)) } : null);
+        } catch (e) { done(null); }
+      };
+      s.onerror = () => done(null);
+      s.src = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=" + encodeURIComponent(q) +
+        "&benchmark=Public_AR_Current&format=jsonp&callback=" + cb;
+      document.head.appendChild(s);
+    });
+  }
+  const inArea = (pt) => F.miles(F.PLACES.downtown, pt) <= 40;
+  const niceAddress = (a) => a.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).replace(", Ga,", ", GA,");
+
+  async function search(text) {
     const pt = F.locate(text);
-    if (!pt) { $("msg").textContent = "Try a Milledgeville ZIP (31061, 31062, 31059) or a place like GCSU or downtown."; return; }
-    where = pt; label = String(text).trim(); update(true);
+    if (pt) { where = pt; label = String(text).trim(); update(true); return; }
+    if (looksLikeAddress(text)) {
+      $("msg").textContent = "Looking up that address...";
+      const g = await geocode(text);
+      if (!g) { $("msg").textContent = "We couldn't find that address. Check the spelling, add the ZIP, or search by ZIP code."; return; }
+      if (!inArea(g.pt)) { $("msg").textContent = "That address looks to be outside the Milledgeville area. Try a ZIP code instead."; return; }
+      where = g.pt; label = g.matched; update(true); return;
+    }
+    $("msg").textContent = "Try a ZIP (31061, 31062, 31059), a street address, or a place like GCSU or downtown.";
   }
   $("form").addEventListener("submit", (e) => { e.preventDefault(); search($("q").value); });
   document.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => { $("q").value = b.dataset.q; search(b.dataset.q); }));
@@ -204,9 +237,13 @@
     text = text.trim(); if (!text) return;
     addMsg("me", esc(text));
     const typing = addMsg("bot typing", "• • •");
-    setTimeout(() => {
+    setTimeout(async () => {
       let reply = F.smsAnswer(text, nowMs(), P, D);
-      if (reply.startsWith("Sorry, I couldn't find")) reply += "\n\n(This demo knows ZIPs and landmarks. The live line also takes street addresses.)";
+      if (reply.startsWith("Sorry, I couldn't find") && looksLikeAddress(text)) {
+        const g = await geocode(text);
+        reply = g && inArea(g.pt) ? `Matched address: ${g.matched}\n\n` + F.smsAnswer(text, nowMs(), P, D, g.pt)
+          : "Sorry, I couldn't find that address. Try adding the ZIP code, or text a ZIP like 31061.";
+      }
       typing.remove(); addMsg("bot", linkify(reply));
     }, 650);
   }

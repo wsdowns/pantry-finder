@@ -25,23 +25,38 @@ PLACES = {
 }
 
 
-def locate(text):
+def locate_known(text):
+    """A stored ZIP/landmark center, or None."""
     q = text.strip().lower()
     for key, pt in PLACES.items():
         if key in q:
             return pt
-    # Fall back to the free US Census geocoder for street addresses.
+    return None
+
+
+def geocode(text):
+    """((lat, lng), matched address) from the free US Census geocoder, or None. Network errors give None.
+    The Census match can differ from what was typed (e.g. S Wayne St -> N Wayne St), so callers show it back."""
     try:
-        addr = text if "ga" in q else f"{text}, Milledgeville, GA"
+        addr = text if re.search(r"\bga\b|georgia", text, re.I) else f"{text}, Milledgeville, GA"
         url = ("https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?"
                + urllib.parse.urlencode({"address": addr, "benchmark": "Public_AR_Current", "format": "json"}))
         with urllib.request.urlopen(url, timeout=6) as r:
             m = json.load(r)["result"]["addressMatches"]
         if m:
-            return m[0]["coordinates"]["y"], m[0]["coordinates"]["x"]
+            return (m[0]["coordinates"]["y"], m[0]["coordinates"]["x"]), m[0]["matchedAddress"]
     except Exception:
         pass
     return None
+
+
+def locate(text):
+    """Point only, for callers that don't need the matched address."""
+    return locate_known(text) or (geocode(text) or (None,))[0]
+
+
+def _nice_address(matched):
+    return matched.title().replace(", Ga,", ", GA,")
 
 
 def miles(a, b):
@@ -114,7 +129,13 @@ def answer(text, now=None):
     now = now or datetime.now(TZ)
     if any(w in text.lower() for w in DELIVERY_WORDS):
         return delivery_answer()
-    where = locate(text)
+    where, matched = locate_known(text), None
+    if not where:
+        found = geocode(text)
+        if found:
+            where, matched = found
+            if miles(PLACES["downtown"], where) > 40:
+                return "Sorry, that address looks outside the Milledgeville area. Text a ZIP like 31061 instead."
     if not where:
         return "Sorry, I couldn't find that place. Text a ZIP (31061), a landmark (GCSU), or a street address."
     lines = []
@@ -126,7 +147,8 @@ def answer(text, now=None):
             line += f"\nhttps://www.google.com/maps/dir/?api=1&destination={p['lat']},{p['lng']}"
         lines.append(line)
     foot = "Hours change; call first. Reply with another ZIP to search again."
-    return "\n\n".join(lines) + "\n\n" + foot
+    head = f"Matched address: {_nice_address(matched)}\n\n" if matched else ""
+    return head + "\n\n".join(lines) + "\n\n" + foot
 
 
 def valid_twilio_signature(url, params, signature):

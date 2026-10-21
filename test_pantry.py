@@ -73,6 +73,40 @@ class Delivery(unittest.TestCase):
             self.assertTrue(d.get("phone") or d.get("website"), d["name"])
 
 
+class Address(unittest.TestCase):
+    NOW = at(2026, 10, 21, 10)
+
+    def with_geocode(self, result, text="210 S Wayne St"):
+        orig = pantry.geocode
+        pantry.geocode = lambda t: result
+        try:
+            return pantry.answer(text, self.NOW)
+        finally:
+            pantry.geocode = orig
+
+    def test_matched_address_is_shown_back(self):
+        # The Census really did turn "210 S Wayne St" into "210 N WAYNE ST"; the caller must be able to see that.
+        out = self.with_geocode(((33.0834, -83.2278), "210 N WAYNE ST, MILLEDGEVILLE, GA, 31061"))
+        self.assertTrue(out.startswith("Matched address: 210 N Wayne St, Milledgeville, GA, 31061\n\n"))
+        self.assertIn("Chard Wray", out)
+
+    def test_far_away_address_is_rejected(self):
+        out = self.with_geocode(((33.7490, -84.3880), "1 PEACHTREE ST, ATLANTA, GA, 30303"))
+        self.assertIn("outside the Milledgeville area", out)
+        self.assertNotIn("Chard Wray", out)
+
+    def test_unmatched_address(self):
+        self.assertIn("couldn't find that place", self.with_geocode(None))
+
+    def test_zip_never_calls_the_geocoder(self):
+        orig = pantry.geocode
+        pantry.geocode = lambda t: self.fail("geocoder should not run for a ZIP")
+        try:
+            self.assertIn("Chard Wray", pantry.answer("31061", self.NOW))
+        finally:
+            pantry.geocode = orig
+
+
 class Voice(unittest.TestCase):
     WED_10 = at(2026, 10, 21, 10)
     WED_13 = at(2026, 10, 21, 13)

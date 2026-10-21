@@ -64,5 +64,9 @@ When `TWILIO_AUTH_TOKEN` is unset, checking is off (fine for local testing). If 
 ## Data caveats
 - Hours come from pantry sites, Lemontree, and findhelp (reviewed Oct 2026). Call pantries to confirm before launch, and re-check periodically.
 - First Presbyterian's coordinates and the ZIP/landmark center points are approximate, so distances are rough.
-- Street-address lookup uses the free US Census geocoder and needs internet.
+- Street-address lookup (website, text simulator and real text line) uses the free US Census geocoder and needs internet. It is optional; ZIP and landmark search never leave the page. The page tells people the address goes to the Census Bureau and is not stored.
+  - The Census can match a different address than typed (it turned `210 S Wayne St` into `210 N Wayne St`), so every address answer shows the matched address first.
+  - Addresses more than 40 miles from downtown Milledgeville are rejected.
+  - Central State campus addresses (454/472 Broad St) are not in the Census data, so they don't match.
+  - The browser can't call the geocoder normally (no CORS headers), so the website uses its script-tag (JSONP) form and uses only the two coordinate numbers from the reply.
 - Not handled yet: STOP/HELP keywords (Twilio handles basic opt-out itself), holidays, closures.

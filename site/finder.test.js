@@ -61,6 +61,13 @@ test("text line matches pantry.py exactly", () => {
   }
 });
 
+test("text line accepts coordinates for a looked-up street address", () => {
+  const now = at(2026, 10, 21, 10);
+  const here = F.PLACES["31062"];
+  assert.strictEqual(F.smsAnswer("472 Broad St", now, P, DELIVERY, here), F.smsAnswer("31062", now, P, DELIVERY));
+  assert.ok(F.smsAnswer("472 Broad St", now, P, DELIVERY).startsWith("Sorry, I couldn't find"));
+});
+
 test("phone line: menu, ZIP, delivery, connect only when open and enabled", () => {
   const now = at(2026, 10, 21, 10);
   assert.ok(F.ivr("", "", {}, now, P, DELIVERY).ask.prompt.startsWith("Press 1"));
