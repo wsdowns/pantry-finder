@@ -125,15 +125,78 @@
     return lines.join("\n\n") + "\n\nHours change; call first. Reply with another ZIP to search again.";
   }
 
-  // Mirrors pantry.py's forward_number(): an explicit number, else the published phone; false turns it off.
+  // Mirrors pantry.py's forward_number(): an explicit number, else the published 10-digit phone; false turns it off.
   function forwardNumber(p) {
     if (p.forward === false) return null;
     if (p.forward) return p.forward;
-    const d = p.phone.split("ext.")[0].replace(/\D/g, "");
+    const d = (p.phone || "").split("ext.")[0].replace(/\D/g, "");
     return d.length === 10 ? "+1" + d : null;
   }
 
-  // One step of the phone line. Returns {say:[...], ask:{prompt,digits,step,ctx}|undefined, end?:true}.
+  // ---- Phone line: port of pantry.py's voice(). One item at a time, nearest first. Plain text for the browser's voice. ----
+  const ABBR = { St: "Street", Dr: "Drive", Rd: "Road", Blvd: "Boulevard", Ave: "Avenue", Ln: "Lane", Ct: "Court", Hwy: "Highway",
+    N: "North", S: "South", E: "East", W: "West", NE: "Northeast", NW: "Northwest", SE: "Southeast", SW: "Southwest" };
+  const SAY_FIX = [["Mon-Fri", "Monday through Friday"], ["Mon-Thu", "Monday through Thursday"]];
+  const DAYNAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const MONTHNAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const spokenText = (s) => SAY_FIX.reduce((t, [a, b]) => t.split(a).join(b), s);
+  const spokenAddress = (p) => p.address.split(",")[0].split(/\s+/).map((w) => ABBR[w.replace(/\.$/, "")] || w).join(" ") + " in Milledgeville";
+  const spokenDistance = (d) => d < 0.2 ? "less than a quarter mile away" : Math.round(d * 10) / 10 === 1 ? "1 mile away" : `${d.toFixed(1)} miles away`;
+  function spokenClock(ms) {
+    const dt = new Date(ms), h24 = dt.getUTCHours(), m = dt.getUTCMinutes(), h = h24 % 12 || 12, ap = h24 < 12 ? "AM" : "PM";
+    if (m === 0 && h24 === 12) return "noon";
+    return m === 0 ? `${h} ${ap}` : `${h}:${String(m).padStart(2, "0")} ${ap}`;
+  }
+  function spokenWhen(ms, nowMs) {
+    const days = Math.round((dayStart(ms) - dayStart(nowMs)) / DAY), c = spokenClock(ms), dt = new Date(ms);
+    if (days === 0) return `today at ${c}`;
+    if (days === 1) return `tomorrow at ${c}`;
+    if (days < 7) return `${DAYNAMES[dt.getUTCDay()]} at ${c}`;
+    return `${DAYNAMES[dt.getUTCDay()]}, ${MONTHNAMES[dt.getUTCMonth()]} ${dt.getUTCDate()} at ${c}`;
+  }
+  const byDistance = (where, nowMs, pantries) =>
+    pantries.map((p) => ({ p, ...status(p, nowMs), dist: miles(where, [p.lat, p.lng]) })).sort((a, b) => a.dist - b.dist);
+
+  function options(canConnect, closed, hasNext, nextLabel) {
+    const o = [];
+    if (canConnect) o.push("Press 1 to be connected." + (closed ? " They are closed, so you can leave a message." : ""));
+    o.push("Press 2 to hear this one again.");
+    if (hasNext) o.push(`Press 3 for the ${nextLabel}.`);
+    o.push("Press 9 to start over.");
+    return o.join(" ");
+  }
+
+  function pantryTurn(zip, i, nowMs, pantries) {
+    const rows = byDistance(PLACES[zip], nowMs, pantries), r = rows[i], p = r.p, open = r.state === "open", last = i + 1 >= rows.length;
+    const say = [`${p.spoken_name || p.name}.`, `It is ${spokenDistance(r.dist)}, at ${spokenAddress(p)}.`,
+      open ? `It is open now, until ${spokenClock(r.when)}.` : r.when ? `It is closed right now. It opens ${spokenWhen(r.when, nowMs)}.` : "I do not have its hours."];
+    if (p.note) say.push(`Note: ${spokenText(p.note)}.`);
+    say.push(`Phone number: ${speakPhone(p.phone)}.`);
+    if (last) say.push("That is the last pantry I have.");
+    return { say, ask: { prompt: options(!!forwardNumber(p), !open, !last, "next closest"), digits: 1, step: "nav", ctx: { kind: "pantry", zip, i } } };
+  }
+
+  function deliveryTurn(i, delivery) {
+    const d = delivery[i], last = i + 1 >= delivery.length, say = [];
+    if (i === 0) say.push("Home delivery is mostly for seniors, or people who cannot leave home. Please call to confirm who qualifies.");
+    say.push(`${d.spoken_name || d.name}.`, spokenText(d.who));
+    const hours = d.spoken_hours || d.hours;
+    if (hours) say.push(`${hours}.`);
+    if (d.phone) say.push(`Phone number: ${speakPhone(d.phone)}.`);
+    if (last) say.push("That is the last option I have.");
+    return { say, ask: { prompt: options(!!forwardNumber(d), false, !last, "next one"), digits: 1, step: "nav", ctx: { kind: "delivery", i } } };
+  }
+
+  function connect(kind, item, nowMs) {
+    if (!forwardNumber(item)) return { end: true, connected: false, say: ["Sorry, I could not connect that call. Please dial the number I read out. Goodbye."] };
+    const name = item.spoken_name || item.name;
+    const say = kind === "delivery" ? `Connecting you to ${name}.`
+      : status(item, nowMs).state === "open" ? `Connecting you to ${name}. They are volunteers, so please be patient.`
+      : `Connecting you to ${name}. They are closed right now, so you may reach a voicemail. Please leave your name and phone number.`;
+    return { end: true, connected: true, say: [say] };
+  }
+
+  // One step of the phone line. Returns {say:[...], ask:{prompt,digits,step,ctx}|undefined, end?:true, connected?:bool}.
   function ivr(step, digits, ctx, nowMs, pantries, delivery) {
     const menu = { say: ["Welcome to Milledgeville food assistance."],
       ask: { prompt: "Press 1 to find a food pantry near you. Press 2 for home delivery.", digits: 1, step: "menu", ctx: {} } };
@@ -141,44 +204,28 @@
     if (!step) return menu;
     if (step === "menu") {
       if (digits === "1") return askZip([]);
-      if (digits === "2") {
-        return { end: true, say: ["Home delivery is mostly for seniors or people who cannot leave home. Please call to confirm who qualifies.",
-          ...delivery.filter((d) => d.phone).map((d) => `${d.name}. ${speakPhone(d.phone)}. ${d.who}`), "Goodbye."] };
-      }
+      if (digits === "2") return deliveryTurn(0, delivery);
       return menu;
     }
     if (step === "zip") {
-      const where = PLACES[digits];
-      if (!where) return askZip(["Sorry, I only know Milledgeville ZIP codes, such as 3 1 0 6 1."]);
-      const top = rank(where, nowMs, pantries).slice(0, 2);
-      const say = top.map((r) => `${r.p.name}, ${r.dist.toFixed(1)} miles away, at ${r.p.address}. ` +
-        (r.state === "open" ? `It is open now, until ${fmt(r.when, nowMs)}.` : `It is closed. It opens ${fmt(r.when, nowMs)}.`) +
-        ` Phone: ${speakPhone(r.p.phone)}.`);
-      // Offer to connect even when closed (its phone takes messages): the best open pantry if any, else the nearest to open.
-      const conn = top.find((r) => forwardNumber(r.p));
-      let opts = "Press 2 to hear this again. Press 9 to start over.";
-      if (conn) {
-        opts = (conn.state === "open" ? `Press 1 to be connected to ${conn.p.name} now. `
-          : `Press 1 to be connected to ${conn.p.name}. It is closed now, so you can leave a message. `) + opts;
-      }
-      return { say, ask: { prompt: opts, digits: 1, step: "pick", ctx: { zip: digits, n: conn ? pantries.indexOf(conn.p) : -1 } } };
+      if (!/^\d{5}$/.test(digits) || !PLACES[digits]) return askZip(["Sorry, I only know Milledgeville ZIP codes, such as 3 1 0 6 1."]);
+      return pantryTurn(digits, 0, nowMs, pantries);
     }
-    if (step === "pick") {
-      const p = ctx.n >= 0 ? pantries[ctx.n] : null;
-      const ok = !!(p && forwardNumber(p));
-      if (digits === "1") {
-        const open = ok && status(p, nowMs).state === "open";
-        return { end: true, connected: ok, say: !ok ? ["Sorry, I could not connect that call. Please dial the number I read out. Goodbye."]
-          : open ? [`Connecting you to ${p.name}. They are volunteers, so please be patient.`]
-          : [`Connecting you to ${p.name}. They are closed right now, so you may reach a voicemail. Please leave your name and phone number.`] };
-      }
-      if (digits === "2") return ivr("zip", ctx.zip, {}, nowMs, pantries, delivery);
-      return menu;
+    if (step === "nav") {
+      const kind = ctx.kind === "delivery" ? "delivery" : "pantry";
+      const items = kind === "delivery" ? delivery : PLACES[ctx.zip] ? byDistance(PLACES[ctx.zip], nowMs, pantries).map((r) => r.p) : [];
+      if (!items.length) return menu;
+      let i = Math.min(Math.max(ctx.i || 0, 0), items.length - 1);
+      if (digits === "1") return connect(kind, items[i], nowMs);
+      if (digits === "9") return menu;
+      if (digits === "3" && i + 1 < items.length) i += 1;   // next; on the last item (or after 2 or any other key) stay put
+      return kind === "delivery" ? deliveryTurn(i, delivery) : pantryTurn(ctx.zip, i, nowMs, pantries);
     }
     return menu;
   }
 
   root.Finder = { PLACES, etNow, windowsOn, status, miles, locate, rank, fmt, fmtTime, dayStart, DAY, HOUR,
-    smsAnswer, deliveryAnswer, ivr, speakPhone, forwardNumber, directionsUrl };
+    smsAnswer, deliveryAnswer, ivr, speakPhone, forwardNumber, directionsUrl,
+    spokenAddress, spokenDistance, spokenClock, spokenWhen, spokenText, byDistance };
   if (typeof module !== "undefined") module.exports = root.Finder;
 })(typeof window !== "undefined" ? window : globalThis);

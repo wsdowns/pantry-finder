@@ -35,7 +35,7 @@
     $("hl-text").textContent = voice && text
       ? "Text your ZIP code and we text back the nearest open pantry. Prefer to talk? Call and press your ZIP on the keypad."
       : voice
-        ? "Call and press your ZIP code on the keypad. You'll hear the nearest open pantry, and we can connect you to it. No app or internet needed."
+        ? "Call and press your ZIP code on the keypad. You'll hear the closest pantries one at a time, and we can connect you to any of them. No app or internet needed."
         : "Text your ZIP code and we text back the nearest open pantry. No app or internet needed.";
     const callBtn = `<a class="btn" href="tel:${esc(H.tel)}"><span aria-hidden="true">📞</span> Call</a>`;
     const textBtn = `<a class="btn${voice ? " ghost" : ""}" href="sms:${esc(H.tel)}?body=31061"><span aria-hidden="true">💬</span> Text us</a>`;
@@ -313,7 +313,7 @@
     out.say.forEach((t) => line("", "📞 " + t));
     if (out.ask) { line("", "📞 " + out.ask.prompt); call.step = out.ask.step; call.ctx = out.ask.ctx || {}; call.expect = out.ask.digits; call.buf = ""; keybuf(); }
     speak(said);
-    if (out.end) { line("sys", out.connected ? "(Demo: the call would now ring the pantry.)" : "Call ended."); hangup(false); }
+    if (out.end) { line("sys", out.connected ? "(Demo: the call would now ring them.)" : "Call ended."); hangup(false); }
   }
   function keybuf() { $("keybuf").textContent = call.buf ? call.buf : (call.active && call.expect ? "_ ".repeat(call.expect).trim() : " "); }
   function startCall() {

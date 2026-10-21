@@ -31,7 +31,7 @@ Host it free on GitHub Pages, Netlify, or Cloudflare Pages by publishing the `si
 2. **Time machine (40s).** Click "Tue 10am: two open": map pins turn green, cards say Open now. Then "Sat 3pm: all closed" to show it never sends anyone to a locked door. Use the day buttons and slider to scrub the week.
 3. **Map (20s).** Click a pin; the page jumps to its card with hours, directions and a tap-to-call number. Search "GCSU" to move the "You" marker.
 4. **Text line (40s).** In "Try the text line", tap `31061`, then `delivery`. "This is the same code that answers real texts. A test checks the website and the text line give identical answers."
-5. **Phone line (40s).** Press Call, 1, then 31061. Tick "Read aloud" to hear it. Press 1 to be connected to the open pantry (in the browser it stops at "the call would now ring the pantry"; the real line dials it).
+5. **Phone line (40s).** Press Call, 1, then 31061. Tick "Read aloud" to hear it: one pantry, nearest first, then press 3 for the next closest, 2 to repeat, 9 to start over. Press 1 to be connected (in the browser it stops at "the call would now ring the pantry"; the real line dials it, with a voicemail warning when the pantry is closed). Then try 2 on the menu for delivery, same keys. Better still, call the real number.
 6. **Honesty slide (20s).** "Sources disagree on several pantries (see `pantries.json`), so we list only what sources agree on and tell people to call first. Next step is phone confirmation and pantry opt-in."
 
 ## Closures
@@ -77,7 +77,10 @@ The phone line already runs on the Lightsail server and is waiting for a Twilio 
 - A real domain later: point it at the server, add it to that nginx entry, run certbot, and change `PUBLIC_BASE_URL` in `/etc/pantry-line.env` (Twilio signs the exact URL it calls) plus the Twilio webhook.
 
 ## Voice line and call forwarding
-`POST /voice` is the phone line: menu (1 = pantry near you, 2 = home delivery), the caller keys a ZIP, hears the two best pantries, and can be connected to one.
+`POST /voice` is the phone line. Menu: 1 = a pantry near you, 2 = home delivery.
+- **Pantries:** the caller keys a ZIP (31061, 31062 or 31059). The line reads **one pantry at a time, nearest to the ZIP's center first, out to the farthest**, then asks: **1** connect, **2** hear it again, **3** the next closest, **9** start over. Each pantry is read with its distance, address, open or closed (and when it opens), any note such as ID, and its phone number.
+- **Delivery:** the same flow, one option at a time (**1** connect where there is a phone number, **2** again, **3** next, **9** start over). 2-1-1 and Meals on Wheels are read but can't be connected (2-1-1 can't be dialed from a call; Meals on Wheels has no phone number listed).
+- **Voice:** Amazon Polly neural (`Polly.Joanna-Neural`), with phone numbers spoken as phone numbers and addresses, times and distances written out as words. Everything is spoken inside the key prompt, so a caller can press a key at any time. Try another voice without code: add `PHONE_VOICE=Polly.Matthew-Neural` (or `Polly.Ruth-Neural`, `Polly.Danielle-Neural`) to `/etc/pantry-line.env` and restart. In `pantries.json`, optional `spoken_name` and `spoken_hours` give a speech-friendly form (for example "M I A").
 - **Forwarding is on by default** for every pantry, to its published `phone` (no opt-in needed). A caller can be connected whether the pantry is open or closed: when closed, they are told it's closed and they may reach a voicemail (the call rings 45 seconds instead of 25 so a voicemail can pick up). In `pantries.json`, `"forward": false` turns it off for one pantry and `"forward": "+1478XXXXXXX"` overrides the number.
 - Caveats: Chard Wray's and MIA's published numbers are still unconfirmed (sources conflict), and the person answering is often a volunteer. By default the pantry sees the caller's own number as caller ID.
 - Point the number's "A call comes in" webhook at `POST https://<public-host>/voice`.

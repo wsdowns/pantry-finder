@@ -88,32 +88,88 @@ test("directions link starts from the matched address, and only then", () => {
   assert.ok(!F.smsAnswer("31061", now, P, DELIVERY).includes("origin="));
 });
 
-test("phone line: menu, ZIP, delivery, connect only when open and enabled", () => {
+const expectedOrder = (zip, now) => F.byDistance(F.PLACES[zip], now, P).map((r) => r.p);
+
+test("spoken words match pantry.py (addresses, distances, clock, when, text)", () => {
+  const times = [[2026, 10, 21, 12, 0], [2026, 10, 21, 9, 0], [2026, 10, 22, 9, 0], [2026, 10, 27, 9, 30], [2026, 11, 19, 8, 0], [2026, 10, 21, 13, 15]];
+  const dists = [0.05, 0.19, 0.2, 0.96, 1.04, 2.66];
+  const code = `import sys, json; sys.path.insert(0, ${JSON.stringify(ROOT)})\nimport pantry\nfrom datetime import datetime\nT = pantry.TZ\n` +
+    `now = datetime(2026, 10, 21, 10, 0, tzinfo=T)\ntimes = ${JSON.stringify(times)}\n` +
+    `print(json.dumps({"addr": [pantry.spoken_address(p) for p in pantry.PANTRIES], "dist": [pantry.spoken_distance(d) for d in ${JSON.stringify(dists)}],` +
+    ` "clock": [pantry.spoken_clock(datetime(*t, tzinfo=T)) for t in times], "when": [pantry.spoken_when(datetime(*t, tzinfo=T), now) for t in times],` +
+    ` "text": pantry.spoken_text("Hot meal Mon-Fri, calls Mon-Thu")}))`;
+  const py = JSON.parse(execFileSync("python3", ["-I", "-c", code]).toString());
+  assert.deepStrictEqual(P.map(F.spokenAddress), py.addr);
+  assert.deepStrictEqual(dists.map(F.spokenDistance), py.dist);
+  assert.deepStrictEqual(times.map((t) => F.spokenClock(at(...t))), py.clock);
+  assert.deepStrictEqual(times.map((t) => F.spokenWhen(at(...t), at(2026, 10, 21, 10))), py.when);
+  assert.strictEqual(F.spokenText("Hot meal Mon-Fri, calls Mon-Thu"), py.text);
+});
+
+test("phone line: ZIP reads one pantry at a time, nearest first, with keys 1/2/3/9", () => {
   const now = at(2026, 10, 21, 10);
   assert.ok(F.ivr("", "", {}, now, P, DELIVERY).ask.prompt.startsWith("Press 1"));
-  const del = F.ivr("menu", "2", {}, now, P, DELIVERY);
-  assert.ok(del.end && del.say.some((s) => s.includes("4 7 8, 4 5 1, 0 4 4 5")));
-  const zip = F.ivr("zip", "31062", {}, now, P, DELIVERY);
-  assert.ok(zip.say[0].startsWith("Chard Wray") && zip.say[0].includes("open now"));
-  // Forwarding is on by default (published phone), only while open; forward:false turns it off.
-  assert.ok(zip.ask.prompt.startsWith("Press 1 to be connected to Chard Wray"));
+  assert.ok(F.ivr("zip", "90210", {}, now, P, DELIVERY).say[0].includes("only know"));
+  for (const zip of ["31061", "31062", "31059"]) {
+    const order = expectedOrder(zip, now);
+    let turn = F.ivr("zip", zip, {}, now, P, DELIVERY);
+    for (let i = 0; i < order.length; i++) {
+      const text = turn.say.join(" ");
+      assert.ok(text.includes(order[i].spoken_name || order[i].name), `${zip} #${i}`);
+      assert.ok(order.filter((_, j) => j !== i).every((o) => !text.includes(o.spoken_name || o.name)), "only one pantry per turn");
+      assert.ok(turn.ask.prompt.includes("Press 2 to hear this one again") && turn.ask.prompt.includes("Press 9 to start over"));
+      if (i + 1 < order.length) {
+        assert.ok(turn.ask.prompt.includes("Press 3 for the next closest"));
+        turn = F.ivr("nav", "3", turn.ask.ctx, now, P, DELIVERY);
+      }
+    }
+    assert.ok(turn.say.join(" ").includes("That is the last pantry I have") && !turn.ask.prompt.includes("Press 3"));
+    assert.ok(F.ivr("nav", "3", turn.ask.ctx, now, P, DELIVERY).say.join(" ").includes("last pantry"));   // 3 on the last stays put
+  }
+  const t1 = F.ivr("zip", "31062", {}, now, P, DELIVERY);
+  assert.deepStrictEqual(F.ivr("nav", "2", t1.ask.ctx, now, P, DELIVERY).say, t1.say);           // 2 repeats
+  assert.deepStrictEqual(F.ivr("nav", "7", t1.ask.ctx, now, P, DELIVERY).say, t1.say);           // unknown key repeats
+  assert.ok(F.ivr("nav", "9", t1.ask.ctx, now, P, DELIVERY).say[0].startsWith("Welcome"));       // 9 starts over
+});
+
+test("phone line: connect works open or closed (voicemail warning), forward:false removes it", () => {
+  const now = at(2026, 10, 21, 10), later = at(2026, 10, 21, 13);
   assert.strictEqual(F.forwardNumber(chard), "+14784141126");
   assert.strictEqual(F.forwardNumber({ phone: "(478) 453-4111 ext. 2" }), "+14784534111");
   assert.strictEqual(F.forwardNumber({ phone: "211" }), null);
-  const open = F.ivr("pick", "1", zip.ask.ctx, now, P, DELIVERY);
-  assert.ok(open.connected && !open.say[0].includes("voicemail"));
-  // Closed (they take messages): still offered and connected, with a voicemail warning.
-  const later = at(2026, 10, 21, 13);
-  const closedZip = F.ivr("zip", "31062", {}, later, P, DELIVERY);
-  assert.ok(closedZip.ask.prompt.includes("is closed now, so you can leave a message"));
-  const closed = F.ivr("pick", "1", closedZip.ask.ctx, later, P, DELIVERY);
-  assert.ok(closed.connected && closed.say[0].includes("you may reach a voicemail"));
-  // forward:false removes a pantry from the offer; with all off, nothing is offered.
+  assert.strictEqual(F.forwardNumber({ website: "https://x.test" }), null);                       // no phone at all: no crash
+  const open = F.ivr("zip", "31062", {}, now, P, DELIVERY);
+  assert.ok(open.ask.prompt.includes("Press 1 to be connected.") && !open.ask.prompt.includes("leave a message"));
+  const c1 = F.ivr("nav", "1", open.ask.ctx, now, P, DELIVERY);
+  assert.ok(c1.connected && !c1.say[0].includes("voicemail"));
+  const closed = F.ivr("zip", "31062", {}, later, P, DELIVERY);
+  assert.ok(closed.ask.prompt.includes("They are closed, so you can leave a message"));
+  const c2 = F.ivr("nav", "1", closed.ask.ctx, later, P, DELIVERY);
+  assert.ok(c2.connected && c2.say[0].includes("you may reach a voicemail"));
   const off = P.map((p) => (p === chard ? { ...p, forward: false } : p));
-  assert.ok(!F.ivr("zip", "31062", {}, now, off, DELIVERY).ask.prompt.includes("connected to Chard Wray"));
-  const allOff = P.map((p) => ({ ...p, forward: false }));
-  assert.ok(!F.ivr("zip", "31062", {}, now, allOff, DELIVERY).ask.prompt.includes("be connected"));
-  assert.ok(F.ivr("zip", "90210", {}, now, P, DELIVERY).say[0].includes("only know"));
+  const offTurn = F.ivr("zip", "31062", {}, now, off, DELIVERY);
+  assert.ok(!offTurn.ask.prompt.includes("Press 1"));
+  const refused = F.ivr("nav", "1", offTurn.ask.ctx, now, off, DELIVERY);
+  assert.ok(!refused.connected && refused.say[0].includes("could not connect"));
+});
+
+test("phone line: delivery is read one at a time with the same keys", () => {
+  const now = at(2026, 10, 21, 10);
+  let turn = F.ivr("menu", "2", {}, now, P, DELIVERY);
+  assert.ok(turn.say.join(" ").includes("mostly for seniors") && turn.say.join(" ").includes("Baldwin County Senior Citizens Center"));
+  assert.ok(turn.say.join(" ").includes("Monday through Friday") && !turn.say.join(" ").includes("Mon-Fri"));
+  assert.ok(["Press 1", "Press 2", "Press 3", "Press 9"].every((k) => turn.ask.prompt.includes(k)));
+  assert.ok(!turn.say.join(" ").includes("Overview"));                                           // only the first option
+  for (let i = 0; i + 1 < DELIVERY.length; i++) turn = F.ivr("nav", "3", turn.ask.ctx, now, P, DELIVERY);
+  const text = turn.say.join(" ");
+  assert.ok(text.includes("Two one one") && text.includes("That is the last option I have"));
+  assert.ok(!turn.ask.prompt.includes("Press 3") && !turn.ask.prompt.includes("Press 1"));      // 2-1-1 is not connectable
+  const mowIdx = DELIVERY.findIndex((d) => !d.phone);
+  const mow = F.ivr("nav", "3", { kind: "delivery", i: mowIdx - 1 }, now, P, DELIVERY);
+  assert.ok(mow.say.join(" ").includes("Meals on Wheels") && !mow.say.join(" ").includes("Phone number") && !mow.ask.prompt.includes("Press 1"));
+  const dial = F.ivr("nav", "1", { kind: "delivery", i: 0 }, now, P, DELIVERY);
+  assert.ok(dial.connected && dial.say[0].includes("Baldwin County Senior Citizens Center"));
+  assert.ok(F.ivr("nav", "9", { kind: "delivery", i: 0 }, now, P, DELIVERY).say[0].startsWith("Welcome"));
 });
 
 test("speakPhone", () => {

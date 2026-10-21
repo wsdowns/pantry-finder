@@ -24,7 +24,9 @@ def call(path, form, good_signature=True):
 
 CHECKS = [
     ("a signed call is answered with the menu", "/voice", {"CallSid": "CAcheck"}, True, 200, "Welcome to Milledgeville food assistance"),
-    ("a signed ZIP step finds pantries", "/voice?step=zip", {"CallSid": "CAcheck", "Digits": "31062"}, True, 200, "miles away"),
+    ("a signed ZIP step reads the nearest pantry", "/voice?step=zip", {"CallSid": "CAcheck", "Digits": "31062"}, True, 200, "Chard Wray"),
+    ("pressing 3 moves on to the next closest", "/voice?step=nav&list=pantry&zip=31062&n=0", {"CallSid": "CAcheck", "Digits": "3"}, True, 200, "New Beginnings"),
+    ("delivery: pressing 2 on the menu then 3 moves on", "/voice?step=nav&list=delivery&n=0", {"CallSid": "CAcheck", "Digits": "3"}, True, 200, "Overview"),
     ("a request with a wrong signature is refused", "/voice", {"CallSid": "CAcheck"}, False, 403, ""),
 ]
 HINTS = {503: "the server has no TWILIO_AUTH_TOKEN yet: add it to /etc/pantry-line.env and restart pantry-line",

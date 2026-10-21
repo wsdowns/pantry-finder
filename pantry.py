@@ -172,22 +172,41 @@ def xml_esc(s):
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
-def speak_phone(phone):
-    """'(478) 453-4111 ext. 2' -> '4 7 8, 4 5 3, 4 1 1 1, extension 2' so text-to-speech reads digits."""
+# Amazon Polly neural voice (much clearer than Twilio's default). Change it without code: PHONE_VOICE in /etc/pantry-line.env,
+# e.g. Polly.Matthew-Neural, Polly.Ruth-Neural, Polly.Danielle-Neural.
+VOICE = os.environ.get("PHONE_VOICE", "Polly.Joanna-Neural")
+
+
+class _Ssml(str):
+    """Markup that is already valid SSML. Plain strings get XML-escaped; these pass through."""
+
+
+def _pause(ms=300):
+    return _Ssml(f'<break time="{ms}ms"/>')
+
+
+def _phone(phone):
+    """Spoken phone number: '(478) 453-4111 ext. 2' -> the number as a phone number, then 'extension 2'. '211' -> 2 1 1."""
     main, _, ext = phone.partition("ext.")
     d = re.sub(r"\D", "", main)
-    parts = [d[:3], d[3:6], d[6:]] if len(d) == 10 else [d]
-    spoken = ", ".join(" ".join(x) for x in parts)
-    ext_digits = re.sub(r"\D", "", ext)
-    return spoken + (", extension " + " ".join(ext_digits) if ext_digits else "")
+    kind = "telephone" if len(d) == 10 else "digits"
+    out = f'<say-as interpret-as="{kind}">{d}</say-as>'
+    e = re.sub(r"\D", "", ext)
+    return _Ssml(out + (f', extension <say-as interpret-as="digits">{e}</say-as>' if e else ""))
 
 
-def _say(text):
-    return f"<Say>{xml_esc(text)}</Say>"
+def _speech(parts):
+    return "".join(p if isinstance(p, _Ssml) else xml_esc(p) for p in parts)
 
 
-def _gather(prompt, action, digits):
-    return f'<Gather input="dtmf" numDigits="{digits}" timeout="8" action="{xml_esc(action)}">{_say(prompt)}</Gather>'
+def _say(*parts):
+    return f'<Say voice="{xml_esc(VOICE)}">{_speech(parts)}</Say>'
+
+
+def _gather(parts, action, digits):
+    """Everything is spoken inside the Gather, so a caller can press a key at any time without waiting for the end."""
+    parts = [parts] if isinstance(parts, str) else parts
+    return f'<Gather input="dtmf" numDigits="{digits}" timeout="8" action="{xml_esc(action)}">{_say(*parts)}</Gather>'
 
 
 def _twiml(*parts):
@@ -195,69 +214,178 @@ def _twiml(*parts):
 
 
 def forward_number(p):
-    """Where a call is forwarded: an explicit 'forward' number, else the pantry's published phone.
-    "forward": false in pantries.json turns forwarding off for that pantry."""
+    """Where a call is forwarded: an explicit 'forward' number, else the entry's published phone (10 digits).
+    "forward": false in pantries.json turns forwarding off for that entry."""
     f = p.get("forward")
     if f is False:
         return None
     if f:
         return f
-    digits = re.sub(r"\D", "", p["phone"].split("ext.")[0])
+    digits = re.sub(r"\D", "", p.get("phone", "").split("ext.")[0])
     return "+1" + digits if len(digits) == 10 else None
 
 
-def voice(step="", digits="", zip_code="", n="", dial_status="", now=None):
-    """TwiML for the phone line. step: '' menu, 'menu', 'zip', 'pick', 'after'."""
+# --- Words for text-to-speech: abbreviations, ZIPs and times read badly if left as written. ---
+_ABBR = {"St": "Street", "Dr": "Drive", "Rd": "Road", "Blvd": "Boulevard", "Ave": "Avenue", "Ln": "Lane", "Ct": "Court",
+         "Hwy": "Highway", "N": "North", "S": "South", "E": "East", "W": "West",
+         "NE": "Northeast", "NW": "Northwest", "SE": "Southeast", "SW": "Southwest"}
+
+
+_SAY_FIX = (("Mon-Fri", "Monday through Friday"), ("Mon-Thu", "Monday through Thursday"))
+
+
+def spoken_text(s):
+    """Free text from the data (notes, descriptions) with the bits that read badly aloud fixed."""
+    for a, b in _SAY_FIX:
+        s = s.replace(a, b)
+    return s
+
+
+def spoken_address(p):
+    street = p["address"].split(",")[0]
+    return " ".join(_ABBR.get(w.rstrip("."), w) for w in street.split()) + " in Milledgeville"
+
+
+def spoken_distance(d):
+    if d < 0.2:
+        return "less than a quarter mile away"
+    return "1 mile away" if round(d, 1) == 1.0 else f"{d:.1f} miles away"
+
+
+def spoken_clock(dt):
+    h, m, pm = dt.hour % 12 or 12, dt.minute, dt.hour >= 12
+    if m == 0 and dt.hour == 12:
+        return "noon"
+    return f"{h} {'PM' if pm else 'AM'}" if m == 0 else f"{h}:{m:02d} {'PM' if pm else 'AM'}"
+
+
+def spoken_when(dt, now):
+    days = (dt.date() - now.date()).days
+    clock = spoken_clock(dt)
+    if days == 0:
+        return f"today at {clock}"
+    if days == 1:
+        return f"tomorrow at {clock}"
+    if days < 7:
+        return f"{dt.strftime('%A')} at {clock}"
+    return f"{dt.strftime('%A')}, {dt.strftime('%B')} {dt.day} at {clock}"
+
+
+def by_distance(where, now):
+    """[(pantry, state, when, miles)] from nearest to farthest from the point (the ZIP's center)."""
+    rows = []
+    for p in PANTRIES:
+        st, when = status(p, now)
+        rows.append((p, st, when, miles(where, (p["lat"], p["lng"]))))
+    return sorted(rows, key=lambda r: r[3])
+
+
+def _items(kind, zip_code, now):
+    if kind == "delivery":
+        return DELIVERY
+    where = PLACES.get(zip_code)
+    return [r[0] for r in by_distance(where, now)] if where else []
+
+
+def _options(can_connect, closed, has_next, next_label, connect_label="Press 1 to be connected."):
+    opts = []
+    if can_connect:
+        opts.append(connect_label + (" They are closed, so you can leave a message." if closed else ""))
+    opts.append("Press 2 to hear this one again.")
+    if has_next:
+        opts.append(f"Press 3 for the {next_label}.")
+    opts.append("Press 9 to start over.")
+    return [x for o in opts for x in (o, _pause(250))]
+
+
+def _turn_pantry(zip_code, i, now):
+    """Read ONE pantry (the i-th nearest), then ask what to do next."""
+    rows = by_distance(PLACES[zip_code], now)
+    p, st, when, d = rows[i]
+    open_now, last = st == "open", i + 1 >= len(rows)
+    if open_now:
+        state = f"It is open now, until {spoken_clock(when)}."
+    elif when:
+        state = f"It is closed right now. It opens {spoken_when(when, now)}."
+    else:
+        state = "I do not have its hours."
+    info = [f"{p.get('spoken_name') or p['name']}.", _pause(), f"It is {spoken_distance(d)}, at {spoken_address(p)}.", _pause(), state, _pause()]
+    if p.get("note"):
+        info += [f"Note: {spoken_text(p['note'])}.", _pause()]
+    info += ["Phone number:", _pause(150), _phone(p["phone"]), ".", _pause(500)]
+    if last:
+        info += ["That is the last pantry I have.", _pause(300)]
+    info += _options(bool(forward_number(p)), not open_now, not last, "next closest")
+    # No leading slash: Twilio resolves these against the URL it called, so they stay under any prefix (nginx /line/).
+    return _twiml(_gather(info, f"voice?step=nav&list=pantry&zip={zip_code}&n={i}", 1), _say("We did not get that. Goodbye."))
+
+
+def _turn_delivery(i, now):
+    """Read ONE delivery option, then ask what to do next (same keys as the pantries)."""
+    d, last = DELIVERY[i], i + 1 >= len(DELIVERY)
+    info = []
+    if i == 0:
+        info += ["Home delivery is mostly for seniors, or people who cannot leave home. Please call to confirm who qualifies.", _pause(500)]
+    info += [f"{d.get('spoken_name') or d['name']}.", _pause(), spoken_text(d["who"]), _pause()]
+    hours = d.get("spoken_hours") or d.get("hours")
+    if hours:
+        info += [f"{hours}.", _pause()]
+    if d.get("phone"):
+        info += ["Phone number:", _pause(150), _phone(d["phone"]), ".", _pause(500)]
+    if last:
+        info += ["That is the last option I have.", _pause(300)]
+    info += _options(bool(forward_number(d)), False, not last, "next one")
+    return _twiml(_gather(info, f"voice?step=nav&list=delivery&n={i}", 1), _say("We did not get that. Goodbye."))
+
+
+def _connect(kind, item, now):
+    number = forward_number(item)
+    if not number:
+        return _twiml(_say("Sorry, I could not connect that call. Please dial the number I read out. Goodbye."))
+    name = item.get("spoken_name") or item["name"]
+    if kind == "delivery":
+        intro, ring = f"Connecting you to {name}.", 30
+    elif status(item, now)[0] == "open":
+        intro, ring = f"Connecting you to {name}. They are volunteers, so please be patient.", 25
+    else:  # closed: they take messages. Ring longer so a voicemail has time to pick up, and say so.
+        intro, ring = (f"Connecting you to {name}. They are closed right now, so you may reach a voicemail. "
+                       "Please leave your name and phone number."), 45
+    return _twiml(_say(intro), f'<Dial timeout="{ring}" action="voice?step=after">{xml_esc(number)}</Dial>')
+
+
+def voice(step="", digits="", zip_code="", n="", dial_status="", now=None, kind=""):
+    """TwiML for the phone line. step: '' menu, 'menu', 'zip', 'nav' (one item at a time, kind = pantry|delivery), 'after'."""
     now = now or datetime.now(TZ)
     goodbye = _say("We did not get that. Goodbye.")
+    ask_zip = _twiml(_gather("Enter your 5 digit ZIP code.", "voice?step=zip", 5), goodbye)
     menu = _twiml(_say("Welcome to Milledgeville food assistance."),
                   _gather("Press 1 to find a food pantry near you. Press 2 for home delivery.", "voice?step=menu", 1), goodbye)
     if step == "":
         return menu
     if step == "menu":
         if digits == "1":
-            return _twiml(_gather("Enter your 5 digit ZIP code.", "voice?step=zip", 5), goodbye)
+            return ask_zip
         if digits == "2":
-            items = [f"{d['name']}. {speak_phone(d['phone'])}. {d['who']}" for d in DELIVERY if d.get("phone")]
-            return _twiml(_say("Home delivery is mostly for seniors or people who cannot leave home. Please call to confirm who qualifies."),
-                          *[_say(i) for i in items], _say("Goodbye."))
+            return _turn_delivery(0, now)
         return menu
     if step == "zip":
-        where = PLACES.get(digits)
-        if not where:
-            return _twiml(_say("Sorry, I only know Milledgeville ZIP codes, such as 3 1 0 6 1."),
+        if digits not in PLACES or not digits.isdigit():
+            return _twiml(_say("Sorry, I only know Milledgeville ZIP codes, such as ", _Ssml('<say-as interpret-as="digits">31061</say-as>'), "."),
                           _gather("Enter your 5 digit ZIP code.", "voice?step=zip", 5), goodbye)
-        top = ranked(where, now)[:2]
-        spoken = []
-        for p, st, when, d in top:
-            when_txt = f"It is open now, until {fmt(when, now)}." if st == "open" else f"It is closed. It opens {fmt(when, now)}."
-            spoken.append(f"{p['name']}, {d:.1f} miles away, at {p['address']}. {when_txt} Phone: {speak_phone(p['phone'])}.")
-        # Offer to connect even when the pantry is closed: its phone takes messages. The list is open-first, so this is
-        # the best open pantry if there is one, else the nearest to open.
-        connect = next((p for p, *_ in top if forward_number(p)), None)
-        opts = "Press 2 to hear this again. Press 9 to start over."
-        if connect:
-            opens = status(connect, now)[0] == "open"
-            opts = (f"Press 1 to be connected to {connect['name']} now. " if opens else
-                    f"Press 1 to be connected to {connect['name']}. It is closed now, so you can leave a message. ") + opts
-        idx = PANTRIES.index(connect) if connect else ""
-        # No leading slash: Twilio resolves these against the URL it called, so they stay under any prefix (nginx /line/).
-        action = f"voice?step=pick&zip={digits}&n={idx}"
-        return _twiml(*[_say(s) for s in spoken], _gather(opts, action, 1), _say("Goodbye."))
-    if step == "pick":
-        if digits == "1" and n.isdigit() and int(n) < len(PANTRIES) and forward_number(PANTRIES[int(n)]):
-            p = PANTRIES[int(n)]
-            if status(p, now)[0] == "open":
-                intro, ring = f"Connecting you to {p['name']}. They are volunteers, so please be patient.", 25
-            else:  # closed: ring longer so a voicemail has time to pick up, and say so
-                intro, ring = (f"Connecting you to {p['name']}. They are closed right now, so you may reach a voicemail. "
-                               "Please leave your name and phone number.", 45)
-            return _twiml(_say(intro), f'<Dial timeout="{ring}" action="voice?step=after">{xml_esc(forward_number(p))}</Dial>')
+        return _turn_pantry(digits, 0, now)
+    if step == "nav":
+        kind = "delivery" if kind == "delivery" else "pantry"
+        items = _items(kind, zip_code, now)
+        if not items:
+            return menu
+        i = min(max(int(n) if n.isdigit() else 0, 0), len(items) - 1)
         if digits == "1":
-            return _twiml(_say("Sorry, I could not connect that call. Please dial the number I read out. Goodbye."))
-        if digits == "2":
-            return voice("zip", digits=zip_code, now=now)
-        return menu
+            return _connect(kind, items[i], now)
+        if digits == "9":
+            return menu
+        if digits == "3" and i + 1 < len(items):
+            i += 1                      # next one; on the last item (or after 2 or any other key) stay on this one
+        return _turn_delivery(i, now) if kind == "delivery" else _turn_pantry(zip_code, i, now)
     if step == "after":
         if dial_status == "completed":
             return _twiml("<Hangup/>")
@@ -296,7 +424,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         if url.path == "/voice":
             out = voice(query.get("step", ""), form.get("Digits", ""), query.get("zip", ""), query.get("n", ""),
-                        form.get("DialCallStatus", "")).encode()
+                        form.get("DialCallStatus", ""), kind=query.get("list", "")).encode()
         else:
             text = form.get("Body", "")
             reply = answer(text) if text.strip() else "Text a ZIP code or address to find the nearest open food pantry."

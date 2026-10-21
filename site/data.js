@@ -59,6 +59,7 @@ window.PANTRIES = [
   },
   {
     "name": "MIA - Maddox Investing in America",
+    "spoken_name": "M I A, Maddox Investing in America",
     "address": "133 Old River Bridge Rd SE, Milledgeville, GA 31061",
     "phone": "(478) 453-2221",
     "note": "3rd Thursday monthly only; phone differs by source",
@@ -79,29 +80,34 @@ window.DELIVERY = [
     "name": "Baldwin County Senior Citizens Center",
     "phone": "(478) 451-0445",
     "who": "Hot meal delivered Mon-Fri to homebound Baldwin County seniors. Free.",
-    "hours": "Call Mon-Fri, 9am-2pm"
+    "hours": "Call Mon-Fri, 9am-2pm",
+    "spoken_hours": "Call Monday through Friday, 9 AM to 2 PM"
   },
   {
     "name": "Overview Inc - Home Delivered Meals",
     "phone": "(478) 453-4111 ext. 2",
     "who": "Meals delivered to seniors at home. There may be a waitlist, so ask.",
-    "hours": "Call Mon-Thu, 8:30am-4:30pm"
+    "hours": "Call Mon-Thu, 8:30am-4:30pm",
+    "spoken_hours": "Call Monday through Thursday, 8:30 AM to 4:30 PM"
   },
   {
     "name": "Meals on Wheels of Baldwin County",
     "website": "https://www.mealsonwheelsbaldwin.org/",
-    "who": "Weekday meal delivery for local seniors. Use the numbers above to sign up."
+    "who": "Weekday meal delivery for local seniors. To sign up, call the senior center or Overview Inc."
   },
   {
     "name": "Middle Georgia Regional Commission (Area Agency on Aging)",
     "phone": "(478) 751-6160",
     "who": "Can connect seniors to meal delivery and other aging services.",
-    "hours": "Call Mon-Fri, 8am-5pm"
+    "hours": "Call Mon-Fri, 8am-5pm",
+    "spoken_hours": "Call Monday through Friday, 8 AM to 5 PM"
   },
   {
     "name": "2-1-1 (United Way of Central Georgia)",
+    "spoken_name": "Two one one, from United Way of Central Georgia",
     "phone": "211",
     "who": "Free, confidential referrals to food pantries and other help, for any age. Serves Baldwin County. Ask what food help, including delivery, is near you.",
-    "hours": "Dial 211, 24 hours a day, 7 days a week"
+    "hours": "Dial 211, 24 hours a day, 7 days a week",
+    "spoken_hours": "Open 24 hours a day, 7 days a week"
   }
 ];

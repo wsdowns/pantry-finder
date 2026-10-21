@@ -147,101 +147,196 @@ class Directions(unittest.TestCase):
 class Voice(unittest.TestCase):
     WED_10 = at(2026, 10, 21, 10)
     WED_13 = at(2026, 10, 21, 13)
+    MIA = next(p for p in pantry.PANTRIES if p["name"].startswith("MIA"))
+    FP = next(p for p in pantry.PANTRIES if p["name"].startswith("First Presbyterian"))
+    NB = next(p for p in pantry.PANTRIES if p["name"].startswith("New Beginnings"))
 
     def tearDown(self):
-        CHARD.pop("forward", None)
+        for p in pantry.PANTRIES + pantry.DELIVERY:
+            p.pop("forward", None)
 
-    def test_speak_phone(self):
-        self.assertEqual(pantry.speak_phone("(478) 414-1126"), "4 7 8, 4 1 4, 1 1 2 6")
-        self.assertEqual(pantry.speak_phone("(478) 453-4111 ext. 2"), "4 7 8, 4 5 3, 4 1 1 1, extension 2")
-        self.assertEqual(pantry.speak_phone("211"), "2 1 1")
+    @staticmethod
+    def words(xml):
+        import re
+        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", xml))
 
+    def nav(self, digits, i, kind="pantry", zip_code="31062", now=None):
+        return pantry.voice("nav", digits=digits, zip_code=zip_code, n=str(i), kind=kind, now=now or self.WED_10)
+
+    # --- voice quality ---
     def test_menu(self):
         out = pantry.voice("", now=self.WED_10)
         self.assertIn("<Gather", out)
         self.assertIn("Welcome to Milledgeville food assistance", out)
 
-    def test_delivery_option_reads_numbers(self):
-        out = pantry.voice("menu", digits="2")
-        self.assertIn("Baldwin County Senior Citizens Center", out)
-        self.assertIn("4 7 8, 4 5 1, 0 4 4 5", out)
+    def test_every_say_uses_the_neural_voice(self):
+        for xml in (pantry.voice(), pantry.voice("zip", digits="31062", now=self.WED_10), pantry.voice("menu", digits="2")):
+            self.assertGreater(xml.count("<Say"), 0)
+            self.assertEqual(xml.count("<Say"), xml.count('<Say voice="Polly.Joanna-Neural"'))
 
-    def test_forwarding_is_on_by_default_using_the_published_phone(self):
+    def test_phone_numbers_are_spoken_as_phone_numbers(self):
+        self.assertEqual(pantry._phone("(478) 414-1126"), '<say-as interpret-as="telephone">4784141126</say-as>')
+        self.assertEqual(pantry._phone("(478) 453-4111 ext. 2"),
+                         '<say-as interpret-as="telephone">4784534111</say-as>, extension <say-as interpret-as="digits">2</say-as>')
+        self.assertEqual(pantry._phone("211"), '<say-as interpret-as="digits">211</say-as>')
+
+    def test_spoken_words(self):
+        self.assertEqual(pantry.spoken_address(CHARD), "472 Broad Street in Milledgeville")
+        self.assertEqual(pantry.spoken_address(self.FP), "210 South Wayne Street in Milledgeville")
+        self.assertEqual(pantry.spoken_address(self.NB), "200 Southside Drive in Milledgeville")
+        self.assertEqual(pantry.spoken_address(self.MIA), "133 Old River Bridge Road Southeast in Milledgeville")
+        self.assertEqual(pantry.spoken_distance(0.1), "less than a quarter mile away")
+        self.assertEqual(pantry.spoken_distance(1.04), "1 mile away")
+        self.assertEqual(pantry.spoken_distance(2.66), "2.7 miles away")
+        self.assertEqual([pantry.spoken_clock(at(2026, 10, 21, h, m)) for h, m in ((12, 0), (9, 0), (9, 30), (13, 15))],
+                         ["noon", "9 AM", "9:30 AM", "1:15 PM"])
+        self.assertEqual(pantry.spoken_when(at(2026, 10, 21, 12), self.WED_10), "today at noon")
+        self.assertEqual(pantry.spoken_when(at(2026, 10, 22, 9), self.WED_10), "tomorrow at 9 AM")
+        self.assertEqual(pantry.spoken_when(at(2026, 10, 27, 9, 30), self.WED_10), "Tuesday at 9:30 AM")
+        self.assertEqual(pantry.spoken_when(at(2026, 11, 19, 8), self.WED_10), "Thursday, November 19 at 8 AM")
+        self.assertEqual(pantry.spoken_text("Hot meal Mon-Fri"), "Hot meal Monday through Friday")
+
+    # --- pantries: one at a time, nearest first ---
+    def test_zip_reads_only_the_nearest_pantry_and_offers_the_keys(self):
+        xml = pantry.voice("zip", digits="31062", now=self.WED_10)
+        text = self.words(xml)
+        self.assertIn("Chard Wray", text)
+        for other in ("New Beginnings", "First Presbyterian", "M I A"):
+            self.assertNotIn(other, text)
+        for key in ("Press 1", "Press 2", "Press 3", "Press 9"):
+            self.assertIn(key, text)
+        self.assertIn('numDigits="1"', xml)
+        self.assertIn("voice?step=nav&amp;list=pantry&amp;zip=31062&amp;n=0", xml)
+        self.assertIn("Gather", xml.split("Chard Wray")[0])        # spoken inside the Gather, so a key press can interrupt it
+
+    def test_each_zip_walks_nearest_to_farthest_and_the_last_ends_the_list(self):
+        for zip_code in ("31061", "31062", "31059"):
+            expected = [(p.get("spoken_name") or p["name"]).split(".")[0] for p, *_ in pantry.by_distance(pantry.PLACES[zip_code], self.WED_10)]
+            self.assertEqual(sorted(set(expected)), sorted(expected))
+            heard, xml = [], pantry.voice("zip", digits=zip_code, now=self.WED_10)
+            for i in range(len(expected)):
+                text = self.words(xml)
+                heard.append(next(n for n in expected if n in text))
+                if i + 1 < len(expected):
+                    self.assertIn("Press 3 for the next closest", text)
+                    xml = self.nav("3", i, zip_code=zip_code)
+            self.assertEqual(heard, expected, zip_code)
+            self.assertIn("That is the last pantry I have", text)
+            self.assertNotIn("Press 3", text)
+
+    def test_distances_really_increase(self):
+        for zip_code in ("31061", "31062", "31059"):
+            d = [r[3] for r in pantry.by_distance(pantry.PLACES[zip_code], self.WED_10)]
+            self.assertEqual(d, sorted(d))
+
+    def test_two_repeats_the_same_pantry(self):
+        self.assertIn("New Beginnings", self.words(self.nav("2", 1)))
+        self.assertIn("n=1", self.nav("2", 1))
+
+    def test_unknown_key_repeats_and_three_on_the_last_stays_put(self):
+        self.assertIn("Chard Wray", self.words(self.nav("7", 0)))
+        last = len(pantry.PANTRIES) - 1
+        out = self.words(self.nav("3", last))
+        self.assertIn("M I A", out)
+        self.assertIn("last pantry", out)
+
+    def test_nine_starts_over(self):
+        self.assertIn("Welcome to Milledgeville food assistance", self.nav("9", 1))
+
+    def test_connect_works_open_or_closed_with_a_warning_when_closed(self):
         self.assertEqual(pantry.forward_number(CHARD), "+14784141126")
-        out = pantry.voice("zip", digits="31062", now=self.WED_10)
-        self.assertIn("Chard Wray Food Pantry", out)
-        self.assertIn("open now", out)
-        self.assertIn("Press 1 to be connected to Chard Wray", out)
-        idx = pantry.PANTRIES.index(CHARD)
-        dial = pantry.voice("pick", digits="1", zip_code="31062", n=str(idx), now=self.WED_10)
-        self.assertIn("<Dial", dial)
+        open_menu = self.words(pantry.voice("zip", digits="31062", now=self.WED_10))
+        self.assertIn("Press 1 to be connected.", open_menu)
+        self.assertNotIn("closed, so you can leave a message", open_menu)
+        dial = self.nav("1", 0)
+        self.assertIn('<Dial timeout="25"', dial)
         self.assertIn("+14784141126", dial)
+        self.assertNotIn("voicemail", dial)
+        closed_menu = self.words(pantry.voice("zip", digits="31062", now=self.WED_13))
+        self.assertIn("They are closed, so you can leave a message", closed_menu)
+        closed = self.nav("1", 0, now=self.WED_13)
+        self.assertIn('<Dial timeout="45"', closed)
+        self.assertIn("you may reach a voicemail", closed)
 
-    def test_forward_false_turns_it_off_for_a_pantry(self):
+    def test_forward_false_removes_connect_for_that_pantry(self):
         CHARD["forward"] = False
         self.assertIsNone(pantry.forward_number(CHARD))
-        # Chard Wray is the nearest and open, but with forwarding off the offer goes to the next pantry that can connect.
-        self.assertNotIn("connected to Chard Wray", pantry.voice("zip", digits="31062", now=self.WED_10))
-        saved = [(p, p.get("forward")) for p in pantry.PANTRIES]
-        try:
-            for p in pantry.PANTRIES:
-                p["forward"] = False
-            self.assertNotIn("be connected", pantry.voice("zip", digits="31062", now=self.WED_10))
-        finally:
-            for p, old in saved:
-                p.pop("forward", None) if old is None else p.__setitem__("forward", old)
-
-    def test_phone_with_extension_forwards_to_the_main_number(self):
-        self.assertEqual(pantry.forward_number({"phone": "(478) 453-4111 ext. 2"}), "+14784534111")
-        self.assertIsNone(pantry.forward_number({"phone": "211"}))
+        self.assertNotIn("Press 1", self.words(pantry.voice("zip", digits="31062", now=self.WED_10)))
+        self.assertIn("could not connect", self.nav("1", 0))
+        self.assertNotIn("<Dial", self.nav("1", 0))
 
     def test_unknown_zip_asks_again(self):
         out = pantry.voice("zip", digits="90210", now=self.WED_10)
         self.assertIn("only know Milledgeville ZIP", out)
         self.assertNotIn("<Dial", out)
+        self.assertIn("Gather", out)
 
-    def test_connect_is_offered_and_dialed_open_or_closed(self):
-        CHARD["forward"] = "+14785550123"
-        idx = pantry.PANTRIES.index(CHARD)
-        # Open: plain offer, normal ring time, no voicemail warning.
-        offer = pantry.voice("zip", digits="31062", now=self.WED_10)
-        self.assertIn("Press 1 to be connected to Chard Wray Food Pantry now.", offer)
-        self.assertIn(f"n={idx}", offer)
-        dial = pantry.voice("pick", digits="1", zip_code="31062", n=str(idx), now=self.WED_10)
-        self.assertIn('<Dial timeout="25"', dial)
-        self.assertIn("+14785550123", dial)
-        self.assertNotIn("voicemail", dial)
-        # Closed (they take messages): still offered and dialed, with a clear warning and a longer ring.
-        closed_offer = pantry.voice("zip", digits="31062", now=self.WED_13)
-        self.assertIn("is closed now, so you can leave a message", closed_offer)
-        closed = pantry.voice("pick", digits="1", zip_code="31062", n=str(idx), now=self.WED_13)
-        self.assertIn('<Dial timeout="45"', closed)
-        self.assertIn("+14785550123", closed)
-        self.assertIn("you may reach a voicemail", closed)
+    def test_bad_inputs_do_not_crash(self):
+        for n in ("abc", "99", "-1", ""):
+            self.assertIn("<Response>", pantry.voice("nav", digits="1", zip_code="31062", n=n, kind="pantry", now=self.WED_10))
+        self.assertIn("Welcome", pantry.voice("nav", digits="3", zip_code="99999", n="0", kind="pantry", now=self.WED_10))
 
-    def test_bad_n_does_not_crash(self):
-        self.assertNotIn("<Dial", pantry.voice("pick", digits="1", n="abc", now=self.WED_10))
-        self.assertNotIn("<Dial", pantry.voice("pick", digits="1", n="99", now=self.WED_10))
+    # --- delivery: the same flow ---
+    def test_delivery_flow_one_at_a_time_with_the_same_keys(self):
+        first = pantry.voice("menu", digits="2", now=self.WED_10)
+        text = self.words(first)
+        self.assertIn("mostly for seniors", text)
+        self.assertIn("Baldwin County Senior Citizens Center", text)
+        self.assertIn("Monday through Friday", text)
+        self.assertNotIn("Mon-Fri", text)
+        for key in ("Press 1", "Press 2", "Press 3", "Press 9"):
+            self.assertIn(key, text)
+        self.assertNotIn("Overview", text)                     # only the first option
+        self.assertIn("voice?step=nav&amp;list=delivery&amp;n=0", first)
+        count = len(pantry.DELIVERY)
+        for i in range(count):
+            out = pantry.voice("nav", digits="2", n=str(i), kind="delivery", now=self.WED_10)
+            self.assertNotIn("Mon-Fri", out)
+            self.assertNotIn("Mon-Thu", out)
+        last = self.words(pantry.voice("nav", digits="2", n=str(count - 1), kind="delivery"))
+        self.assertIn("Two one one", last)
+        self.assertIn("That is the last option I have", last)
+        self.assertNotIn("Press 3", last)
+        self.assertNotIn("Press 1", last)                      # 2-1-1 can't be dialed from a call, so no connect
+        self.assertIn('<say-as interpret-as="digits">211</say-as>', pantry.voice("nav", digits="2", n=str(count - 1), kind="delivery"))
 
+    def test_delivery_option_without_a_phone_is_read_but_not_connectable(self):
+        mow = next(i for i, d in enumerate(pantry.DELIVERY) if not d.get("phone"))
+        out = pantry.voice("nav", digits="2", n=str(mow), kind="delivery")
+        text = self.words(out)
+        self.assertIn("Meals on Wheels", text)
+        self.assertNotIn("Phone number", text)
+        self.assertNotIn("Press 1", text)
+        self.assertIn("could not connect", pantry.voice("nav", digits="1", n=str(mow), kind="delivery"))
+
+    def test_delivery_connect_and_walk(self):
+        dial = pantry.voice("nav", digits="1", n="0", kind="delivery", now=self.WED_13)
+        self.assertIn('<Dial timeout="30"', dial)
+        self.assertIn("+14784510445", dial)
+        self.assertIn("Overview", self.words(pantry.voice("nav", digits="3", n="0", kind="delivery")))
+        self.assertIn("Welcome", pantry.voice("nav", digits="9", n="0", kind="delivery"))
+
+    # --- plumbing ---
     def test_follow_up_addresses_stay_under_the_public_prefix(self):
-        # The real bug: actions like "/voice?step=menu" resolve to https://host/voice, skipping nginx's /line/ prefix (404,
-        # "application error"). Resolve every action the way Twilio does, from the URL it called, and require the prefix.
+        # The bug a real call found: "/voice?step=menu" resolves to https://host/voice, skipping nginx's /line/ prefix (404).
+        # Resolve every action the way Twilio does, from the URL it called, and require the prefix.
         import re
         from urllib.parse import urljoin
         called = "https://example.test/line/voice"
-        CHARD["forward"] = "+14785550123"
-        idx = pantry.PANTRIES.index(CHARD)
-        calls = [dict(), dict(step="menu", digits="1"), dict(step="menu", digits="9"), dict(step="zip", digits="31062"),
-                 dict(step="zip", digits="90210"), dict(step="pick", digits="1", n=str(idx), zip_code="31062"),
-                 dict(step="pick", digits="2", zip_code="31062")]
+        calls = [dict(), dict(step="menu", digits="1"), dict(step="menu", digits="2"), dict(step="menu", digits="9"),
+                 dict(step="zip", digits="31062"), dict(step="zip", digits="90210"),
+                 dict(step="nav", digits="1", n="0", zip_code="31062", kind="pantry"),
+                 dict(step="nav", digits="1", n="0", zip_code="31062", kind="pantry", now=self.WED_13),
+                 dict(step="nav", digits="3", n="0", zip_code="31062", kind="pantry"),
+                 dict(step="nav", digits="2", n="1", kind="delivery"), dict(step="nav", digits="1", n="0", kind="delivery")]
         found = 0
         for kw in calls:
-            xml = pantry.voice(now=self.WED_10, **kw)
-            for action in re.findall(r'action="([^"]+)"', xml):
+            kw.setdefault("now", self.WED_10)
+            for action in re.findall(r'action="([^"]+)"', pantry.voice(**kw)):
                 found += 1
                 resolved = urljoin(called, action.replace("&amp;", "&"))
                 self.assertTrue(resolved.startswith("https://example.test/line/voice?step="), f"{action} -> {resolved}")
-        self.assertGreaterEqual(found, 5)
+        self.assertGreaterEqual(found, 8)
 
     def test_after_dial(self):
         self.assertIn("no one picked up", pantry.voice("after", dial_status="no-answer"))
@@ -249,10 +344,11 @@ class Voice(unittest.TestCase):
 
     def test_all_steps_are_wellformed_xml(self):
         from xml.dom import minidom
-        CHARD["forward"] = "+14785550123"
-        for kw in ({}, {"step": "menu", "digits": "1"}, {"step": "menu", "digits": "2"},
-                   {"step": "zip", "digits": "31061"}, {"step": "pick", "digits": "1", "n": "0"},
-                   {"step": "pick", "digits": "2", "zip_code": "31061"}, {"step": "after", "dial_status": "busy"}):
+        calls = [dict(), dict(step="menu", digits="1"), dict(step="menu", digits="2"), dict(step="zip", digits="31061"),
+                 dict(step="zip", digits="00000"), dict(step="after", dial_status="busy")]
+        calls += [dict(step="nav", digits=k, n=str(i), zip_code="31059", kind="pantry") for k in "12379" for i in range(4)]
+        calls += [dict(step="nav", digits=k, n=str(i), kind="delivery") for k in "12379" for i in range(len(pantry.DELIVERY))]
+        for kw in calls:
             minidom.parseString(pantry.voice(now=self.WED_10, **kw))
 
 
