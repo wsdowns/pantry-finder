@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Renders docs/phone-line-flowchart.svg to a PNG (3840x2160, crisp on a projector) with headless Chrome.
+# Renders site/flowchart/phone-line-flowchart.svg to a PNG (3840x2160, crisp on a projector) with headless Chrome.
 # Chrome writes the PNG and then hangs instead of exiting, so this waits for the file and kills Chrome.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
-SVG="$HERE/phone-line-flowchart.svg"
-PNG="${1:-$HERE/phone-line-flowchart.png}"
+OUT_DIR="$HERE/../site/flowchart"
+SVG="$(cd "$OUT_DIR" && pwd)/phone-line-flowchart.svg"
+PNG="${1:-$(cd "$OUT_DIR" && pwd)/phone-line-flowchart.png}"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 PROFILE="$(mktemp -d)"
 rm -f "$PNG"

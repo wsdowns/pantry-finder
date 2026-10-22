@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How a Call Works | Milledgeville Food Assistance</title>
+<meta name="description" content="How the Milledgeville food assistance phone line works, step by step.">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="../favicon.png">
+<style>
+  @font-face { font-family: "Mulish"; src: url("../fonts/mulish-latin.woff2") format("woff2"); font-weight: 400 900; font-display: swap; }
+  @font-face { font-family: "Oswald"; src: url("../fonts/oswald-latin.woff2") format("woff2"); font-weight: 500 700; font-display: swap; }
+  :root { --bg: #08150e; --card: #12291c; --ink: #eef5ec; --muted: #a9bdb0; --line: #24402f; --accent: #b3d1a9; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 "Mulish", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1500px; margin: 0 auto; padding: 18px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  h1 { margin: 0; font: 700 clamp(1.5rem, 4vw, 2.2rem)/1.1 "Oswald", Arial, sans-serif; letter-spacing: .02em; text-transform: uppercase; }
+  .btns { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--card); color: var(--ink); font-weight: 800; text-decoration: none; }
+  .btn.primary { background: var(--accent); color: #00220f; border-color: transparent; }
+  .btn:focus-visible, figure a:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  figure { margin: 0; }
+  figure a { display: block; border-radius: 14px; overflow: hidden; box-shadow: 0 14px 40px rgba(0,0,0,.5); }
+  figure img { display: block; width: 100%; height: auto; background: #f4f7f2; }
+  figcaption { margin: 10px 4px 0; color: var(--muted); font-size: .95rem; }
+  details { margin-top: 26px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 6px 20px 18px; }
+  summary { cursor: pointer; font-weight: 800; padding: 12px 0; min-height: 44px; }
+  details ol { margin: 6px 0 0; padding-left: 22px; }
+  details li { margin: 0 0 10px; }
+  details ul { margin: 6px 0 0; padding-left: 20px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>How a call works</h1>
+    <div class="btns">
+      <a class="btn primary" href="phone-line-flowchart.png">Open full size (PNG)</a>
+      <a class="btn" href="phone-line-flowchart.svg" download>Download SVG</a>
+      <a class="btn" href="../">Back to the site</a>
+    </div>
+  </header>
+
+  <figure>
+    <a href="phone-line-flowchart.png" aria-label="Open the flowchart at full size">
+      <img src="phone-line-flowchart.png" width="3840" height="2160"
+        alt="Flowchart of the phone line. A neighbor calls (844) 670-4047 and hears a greeting, then presses 1 for a food pantry or 2 for home delivery. Pantries are read one at a time, nearest first; deliveries are read one at a time. Keys: 1 connect, 2 say it again, 3 next closest, 9 start over. A text version is below.">
+    </a>
+    <figcaption>Tap or click the chart to open it full size, then pinch or scroll to zoom.</figcaption>
+  </figure>
+
+  <details>
+    <summary>Text version of the flowchart</summary>
+    <ol>
+      <li><strong>A neighbor calls (844) 670-4047</strong> from any phone. No app, no internet, no sign-up.</li>
+      <li><strong>Greeting and menu:</strong> &ldquo;Welcome to Milledgeville food assistance. Press 1 for a food pantry, 2 for home delivery.&rdquo;</li>
+      <li><strong>Press 1, food pantry.</strong> The caller keys a 5-digit ZIP (31061, 31062 or 31059). The line reads <em>one pantry at a time, nearest first</em>: name, distance, address, whether it is open now or when it opens, and its phone number.</li>
+      <li><strong>Press 2, home delivery.</strong> A short intro (mostly for seniors and people who can&rsquo;t get out), then one program at a time: name and who qualifies, hours to call, and phone number. Five programs, in order.</li>
+      <li><strong>The same keys everywhere:</strong>
+        <ul>
+          <li><strong>1</strong> connect me. For a pantry that is open, the call rings the pantry now. For a closed pantry, the caller is warned it may be a voicemail and the call rings longer so a message can be left. For delivery, the call rings the program&rsquo;s office where there is a phone number; 2-1-1 and Meals on Wheels are read aloud only.</li>
+          <li><strong>2</strong> say it again.</li>
+          <li><strong>3</strong> next closest (farther out each time), or the next program.</li>
+          <li><strong>9</strong> start over, back to the main menu.</li>
+        </ul>
+      </li>
+      <li><strong>Behind the scenes:</strong> a Twilio toll-free number answers every call; our server checks the call really came from Twilio; open or closed is worked out at the moment of the call; a neural voice reads the answer, then connects the call.</li>
+    </ol>
+  </details>
+</div>
+</body>
+</html>

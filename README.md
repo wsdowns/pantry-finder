@@ -55,7 +55,7 @@ python3 pantry.py --serve
 When `TWILIO_AUTH_TOKEN` is unset, checking is off (fine for local testing). If you sit behind a proxy that changes the URL, `PUBLIC_URL` must still be the URL Twilio was configured with.
 
 ## Presentation flowchart
-`docs/phone-line-flowchart.png` (3840x2160, 16:9, for slides) and `docs/phone-line-flowchart.svg` (scalable, editable) show how a call works. To change the wording or layout, edit `docs/make_flowchart.py`, run it, then run `docs/render_flowchart.sh` to rebuild the PNG (it needs Google Chrome; the script stops Chrome after it writes the file). In PowerPoint or Keynote, use the PNG: they don't carry the SVG's embedded fonts.
+`site/flowchart/phone-line-flowchart.png` (3840x2160, 16:9, for slides) and `site/flowchart/phone-line-flowchart.svg` (scalable, editable) show how a call works. They are published with the website: viewing page `https://3-14-120-244.sslip.io/pantry/flowchart/`, direct image `https://3-14-120-244.sslip.io/pantry/flowchart/phone-line-flowchart.png`. To change the wording or layout, edit `docs/make_flowchart.py`, run it, then run `docs/render_flowchart.sh` to rebuild the PNG (it needs Google Chrome; the script stops Chrome after it writes the file). In PowerPoint or Keynote, use the PNG: they don't carry the SVG's embedded fonts.
 
 ## Going live with Twilio (voice only)
 The phone line already runs on the Lightsail server and is waiting for a Twilio number. Texting is off for now.

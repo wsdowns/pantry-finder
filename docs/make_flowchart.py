@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds docs/phone-line-flowchart.svg, the presentation flowchart of how a call works.
+"""Builds site/flowchart/phone-line-flowchart.svg, the presentation flowchart of how a call works.
 
 Self-contained SVG (fonts and logo embedded). Change the wording or layout below and rerun:
     python3 docs/make_flowchart.py
@@ -12,7 +12,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "docs" / "phone-line-flowchart.svg"
+OUT = ROOT / "site" / "flowchart" / "phone-line-flowchart.svg"
 
 # Palette: Georgia College green and navy, plus the logo's gold.
 G, GD, SAGE, BG, LINE = "#005028", "#003319", "#b3d1a9", "#f4f7f2", "#cfdcc9"
